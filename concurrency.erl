@@ -16,9 +16,7 @@ parallel_map(Fun, Ls, PoolSize) ->
     Avengers = parallel_map(self(), Fun, Ls, ThreadPool),
     assemble(Avengers). %% Really, they are pids.
 parallel_map(Fun, Ls) ->
-    ThreadPool = thread_pool:create(1),
-    Avengers = parallel_map(self(), Fun, Ls, ThreadPool),
-    assemble(Avengers). %% Really, they are pids.
+    parallel_map(Fun, Ls, 1).
 
 assemble([]) -> [];
 assemble([Pid|Rest]) -> receive
