@@ -1,12 +1,13 @@
 -module(thread_pool).
 -export([create/1, create/2, next_node/1, add/1, add/2]).
+-export([waitforwork/0]).
 
 create(0, _ServerPool, t) -> erlang:error(invalid_num_node);
 create(1, _ServerPool, t) -> queue:in(spawn(fun waitforwork/0), queue:new());
 create(NumNodes, ServerPool, t) when NumNodes > 0 ->
     {NextServer, NewPool} = next_node(ServerPool),
     Pid = spawn(NextServer, ?MODULE, waitforwork, []),
-    queue:in(Pid, create(NumNodes-1, NewPool)).
+    queue:in(Pid, create(NumNodes-1, NewPool, t)).
 create(NumNodes, ServerPool) ->
     create(NumNodes, queue:from_list([node()|ServerPool]), t).
 create(NumNodes) ->
