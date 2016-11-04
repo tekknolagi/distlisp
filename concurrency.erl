@@ -1,5 +1,6 @@
 -module(concurrency).
 -export([parallel_map/2, parallel_map/3]).
+-export([parallel_map_pool/3]).
 -export([merge_sort/1, test_sort/0]).
 
 parallel_map(_Collector, _Fun, [], _WorkerQueue) -> [];
@@ -14,6 +15,9 @@ parallel_map(Collector, Fun, [H|T], WorkerQueue) ->
     [spawn(Apply)|parallel_map(Collector, Fun, T, NewWorkerQueue)].
 parallel_map(Fun, Ls, PoolSize) ->
     ThreadPool = thread_pool:create(PoolSize),
+    Avengers = parallel_map(self(), Fun, Ls, ThreadPool),
+    assemble(Avengers). %% Really, they are pids.
+parallel_map_pool(Fun, Ls, ThreadPool) ->
     Avengers = parallel_map(self(), Fun, Ls, ThreadPool),
     assemble(Avengers). %% Really, they are pids.
 parallel_map(Fun, Ls) ->
