@@ -99,6 +99,10 @@ evalexp({list, [?LAMBDA, {list, Formals}, Body]}, Env) ->
     FormalNames = lists:map(fun ({sym, Name}) -> Name end, Formals),
     {{closure, FormalNames, Body, Env}, Env};
 
+evalexp({list, [LispFn|Args]}, Env) ->
+    {FnVal, _} = evalexp(LispFn, Env),
+    evalexp({list, [FnVal|Args]}, Env);
+
 evalexp([], Env) -> {ok, Env};
 evalexp([E|[]], Env) -> evalexp(E, Env);
 evalexp([FirstExp|RestExps], Env) ->
