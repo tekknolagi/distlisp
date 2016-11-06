@@ -6,6 +6,9 @@
 -define(PLUS, {sym, '+'}).
 -define(IF, {sym, 'if'}).
 -define(LAMBDA, {sym, lambda}).
+-define(QUOTE, {sym, quote}).
+-define(LET, {sym, 'let'}).
+-define(LETSTAR, {sym, 'let*'}).
 
 lookup(Name, []) -> erlang:error({unbound_variable, Name});
 lookup(Name, [{K, V}|_T]) when Name == K -> V;
@@ -54,8 +57,6 @@ evalexp({int, Val}, Env) -> {{int, Val}, Env};
 
 evalexp({bool, Val}, Env) -> {{bool, Val}, Env};
 
-evalexp({quote, QuotedExp}, Env) -> {QuotedExp, Env};
-
 evalexp({sym, Name}, Env) -> {lookup(Name, Env), Env};
 
 evalexp({letstar, [], Body}, Env) ->
@@ -64,13 +65,15 @@ evalexp({letstar, [{{sym, Name}, Exp}|T], Body}, Env) ->
     {Val, _} = evalexp(Exp, Env),
     evalexp({letstar, T, Body}, bind(Name, Val, Env));
 
-evalexp({letv, Bindings, Body}, Env) ->
-    BoundVars = lists:map(fun ({{sym, Name}, Exp}) ->
+evalexp({list, [?LET, {list, Bindings}, Body]}, Env) ->
+    BoundVars = lists:map(fun ({list, [{sym, Name}, Exp]}) ->
                                   {Val, _} = evalexp(Exp, Env),
                                   {Name, Val}
                           end, Bindings), 
     NewEnv = extend(BoundVars, Env),
     evalexp(Body, NewEnv);
+
+evalexp({list, [?QUOTE, QuotedExp]}, Env) -> {QuotedExp, Env};
 
 evalexp({list, []}, Env) -> {{list, []}, Env};
 evalexp({list, [?PLUS|[]]}, Env) -> {{int, 0}, Env};
@@ -98,6 +101,11 @@ evalexp({list, [{closure, Formals, Body, CapturedEnv}|Actuals]}, Env) ->
 evalexp({list, [?LAMBDA, {list, Formals}, Body]}, Env) ->
     FormalNames = lists:map(fun ({sym, Name}) -> Name end, Formals),
     {{closure, FormalNames, Body, Env}, Env};
+
+%evalexp({list, [{sym, FnName}|Args]}, Env) ->
+%    case FnName of
+%  when isbound(FnName, Env) ->
+%    ok;
 
 evalexp({list, [LispFn|Args]}, Env) ->
     {FnVal, _} = evalexp(LispFn, Env),
