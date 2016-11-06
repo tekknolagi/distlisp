@@ -59,11 +59,13 @@ evalexp({bool, Val}, Env) -> {{bool, Val}, Env};
 
 evalexp({sym, Name}, Env) -> {lookup(Name, Env), Env};
 
-evalexp({letstar, [], Body}, Env) ->
+evalexp({list, [?LETSTAR, {list, []}, Body]}, Env) ->
     evalexp(Body, Env);
-evalexp({letstar, [{{sym, Name}, Exp}|T], Body}, Env) ->
+evalexp({list, [?LETSTAR,
+                {list, [{list, [{sym, Name}, Exp]}|T]},
+                Body]}, Env) ->
     {Val, _} = evalexp(Exp, Env),
-    evalexp({letstar, T, Body}, bind(Name, Val, Env));
+    evalexp({list, [?LETSTAR, {list, T}, Body]}, bind(Name, Val, Env));
 
 evalexp({list, [?LET, {list, Bindings}, Body]}, Env) ->
     BoundVars = lists:map(fun ({list, [{sym, Name}, Exp]}) ->
