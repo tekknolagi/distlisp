@@ -101,14 +101,15 @@ let rec read_object stm =
   else if c = '\'' then
     let obj = read_object stm in
     List(Cons(Symbol("quote"), Cons(obj, Nil)))
-  else if (is_digit c) || (c = '-') then read_fixnum (Char.escaped c)
+  else if (is_digit c) || (c = '~')
+  then read_fixnum (Char.escaped (if c='~' then '-' else c))
   else raise (SyntaxError ("Unexpected char " ^ Char.escaped c));;
 
 let rec print_object (obj : lobject) =
   let print_bool obj =
     print_string (match obj with
-                  | true -> "{bool, true}"
-                  | false -> "{bool, false}");
+                  | true -> "true"
+                  | false -> "false");
   in
   let rec print_list obj =
     match obj with
