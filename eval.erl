@@ -9,6 +9,7 @@
 -define(QUOTE, {sym, quote}).
 -define(LET, {sym, 'let'}).
 -define(LETSTAR, {sym, 'let*'}).
+-define(DEFINE, {sym, 'define'}).
 
 lookup(Name, []) -> erlang:error({unbound_variable, Name});
 lookup(Name, [{K, V}|_T]) when Name == K -> V;
@@ -76,6 +77,10 @@ evalexp({list, [?LET, {list, Bindings}, Body]}, Env) ->
     evalexp(Body, NewEnv);
 
 evalexp({list, [?QUOTE, QuotedExp]}, Env) -> {QuotedExp, Env};
+
+evalexp({list, [?DEFINE, {sym, Name}, Formals, Body]}, Env) ->
+    {Closure, _} = evalexp({list, [?LAMBDA, Formals, Body]}, Env),
+    {Closure, bind(Name, Closure, Env)};
 
 evalexp({list, []}, Env) -> {{list, []}, Env};
 evalexp({list, [?PLUS|[]]}, Env) -> {{int, 0}, Env};
