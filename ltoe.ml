@@ -68,7 +68,7 @@ let rec read_object stm =
       Cons(car, cdr)
   in
   let is_symstartchar c =
-    is_alpha c || c = '*' || c = '/' || c = '<' || c = '<'
+    is_alpha c || c = '*' || c = '/' || c = '<' || c = '>'
     || c = '=' || c = '?' || c = '!' || c = '-' || c = '+'
   in
   let is_delimiter c =
@@ -140,12 +140,16 @@ let rec print_object (obj : lobject) =
 
 let rec main () =
   let stm = { chr=[]; line_num=1; chan=stdin } in
-  let _ = print_string "> " in
-  let _ = flush stdout in
+  (* let _ = print_string "> " in
+  let _ = flush stdout in *)
   let obj = read_object stm in
   print_object obj;
+  print_string ".";
   print_newline ();
   main ();;
 
 let () =
-    main ();;
+    try
+        main ()
+    with End_of_file ->
+        ();;
