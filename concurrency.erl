@@ -4,6 +4,7 @@
 -export([merge_sort/1, test_sort/0]).
 
 parallel_map(_Collector, _Fun, [], _WorkerQueue) -> [];
+
 parallel_map(Collector, Fun, [H|T], WorkerQueue) ->
     {Worker, NewWorkerQueue} = thread_pool:next_node(WorkerQueue),
     Apply = fun() ->
@@ -13,15 +14,18 @@ parallel_map(Collector, Fun, [H|T], WorkerQueue) ->
                     end
             end,
     [spawn(Apply)|parallel_map(Collector, Fun, T, NewWorkerQueue)].
+
 parallel_map(Fun, Ls, PoolSize) ->
-    ThreadPool = thread_pool:create(PoolSize),
-    Avengers = parallel_map(self(), Fun, Ls, ThreadPool),
+    Avengers = parallel_map(self(), Fun, Ls, thread_pool:create(PoolSize)),
     assemble(Avengers). %% Really, they are pids.
+
+parallel_map(Fun, Ls) ->
+    parallel_map(Fun, Ls, 1).
+
 parallel_map_pool(Fun, Ls, ThreadPool) ->
     Avengers = parallel_map(self(), Fun, Ls, ThreadPool),
     assemble(Avengers). %% Really, they are pids.
-parallel_map(Fun, Ls) ->
-    parallel_map(Fun, Ls, 1).
+
 
 assemble([]) -> [];
 assemble([Pid|Rest]) -> receive
