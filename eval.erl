@@ -4,20 +4,21 @@
 -export([lookup/2, bind/3, extend/2]).
 -export([printexp/1]).
 
--define(PLUS, {sym, '+'}).
--define(TIMES, {sym, '*'}).
--define(MINUS, {sym, '-'}).
--define(EXP, {sym, 'exp'}).
--define(IF, {sym, 'if'}).
--define(LAMBDA, {sym, lambda}).
--define(QUOTE, {sym, quote}).
--define(LET, {sym, 'let'}).
+-define(PLUS,    {sym, '+'}).
+-define(TIMES,   {sym, '*'}).
+-define(MINUS,   {sym, '-'}).
+-define(EXP,     {sym, 'exp'}).
+-define(IF,      {sym, 'if'}).
+-define(LAMBDA,  {sym, 'lambda'}).
+-define(QUOTE,   {sym, 'quote'}).
+-define(LET,     {sym, 'let'}).
 -define(LETSTAR, {sym, 'let*'}).
--define(DEFINE, {sym, 'define'}).
--define(B_AND, {sym, 'and'}).
--define(B_OR, {sym, 'or'}).
--define(NOT, {sym, 'not'}).
--define(LT, {sym, '<'}).
+-define(DEFINE,  {sym, 'define'}).
+-define(B_AND,   {sym, 'and'}).
+-define(B_OR,    {sym, 'or'}).
+-define(NOT,     {sym, 'not'}).
+-define(LT,      {sym, '<'}).
+-define(MAP,     {sym, 'map'}).
 
 lookup(Name, []) -> erlang:error({unbound_variable, Name});
 lookup(Name, [{K, V}|_T]) when Name == K -> V;
@@ -110,11 +111,6 @@ evalexp({list, [?IF, Cond, E1, E2]}, Env) ->
         _ -> erlang:error({bad_if, Cond})
     end;
 
-%evalexp({list, [{sym, FnName}|Args]}, Env) ->
-%    case FnName of
-%  when isbound(FnName, Env) ->
-%    ok;
-
 evalexp({list, [?PLUS|[]]}, Env) -> {{int, 0}, Env};
 evalexp({list, [?PLUS|[H|T]]}, Env) ->
     {{int, HV}, _} = evalexp(H, Env),
@@ -157,6 +153,18 @@ evalexp({list, [?LT, A, B]}, Env) ->
     {{int, AV}, _} = evalexp(A, Env),
     {{int, BV}, _} = evalexp(B, Env),
     {{bool, AV < BV}, Env};
+
+evalexp({list, [?MAP, Fn, Elements]}, Env) ->
+    {{list, ElementsVal}, _} = evalexp(Elements, Env),
+    {FnVal, _} = evalexp(Fn, Env),
+    %% Map = fun lists:map/2,
+    Map = fun concurrency:parallel_map/2,
+    Results = Map(fun (Element) ->
+                          {V1, _} = evalexp(Element, Env),
+                          {V2, _} = evalexp({list, [FnVal, V1]}, Env),
+                          V2
+                  end, ElementsVal),
+    {{list, Results}, Env};
 
 evalexp({list, [LispFn|Args]}, Env) ->
     {FnVal, _} = evalexp(LispFn, Env),
