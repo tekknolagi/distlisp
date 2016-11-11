@@ -18,6 +18,9 @@ basis() ->
                  {'and', {prim, fun and_proc/2}},
                  {'or', {prim, fun or_proc/2}},
                  {'null?', {prim, fun nullp_proc/2}},
+                 {'cons', {prim, fun cons_proc/2}},
+                 {'car', {prim, fun car_proc/2}},
+                 {'cdr', {prim, fun cdr_proc/2}},
                  {'list1', {prim, fun list1_proc/2}},
                  {'list2', {prim, fun list2_proc/2}},
                  {'workers', {list, [{sym, node()}]}},
@@ -66,8 +69,19 @@ or_proc([A, B], Env) -> {{bool, AV}, _} = eval:evalexp(A, Env),
 nullp_proc([L], Env) -> {LV, _} = eval:evalexp(L, Env),
                         {{bool, LV == {list, []}}, Env}.
 
+cons_proc([X, XS], Env) -> {XV, _} = eval:evalexp(X, Env),
+                           {{list, XSV}, _} = eval:evalexp(XS, Env),
+                           {{list, [XV|XSV]}, Env}.
+
+car_proc([L], Env) -> {{list, [H|_T]}, _} = eval:evalexp(L, Env),
+                      {H, Env}.
+
+cdr_proc([L], Env) -> {{list, [_H|T]}, _} = eval:evalexp(L, Env),
+                      {{list, T}, Env}.
+
 list1_proc([A], Env) -> {AV, _} = eval:evalexp(A, Env),
                         {{list, [AV]}, Env}.
+
 
 list2_proc([A, B], Env) -> {AV, _} = eval:evalexp(A, Env),
                            {BV, _} = eval:evalexp(B, Env),
