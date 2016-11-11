@@ -4,20 +4,12 @@
 -export([lookup/2, bind/3, extend/2]).
 -export([printexp/1]).
 
--define(PLUS,    {sym, '+'}).
--define(TIMES,   {sym, '*'}).
--define(MINUS,   {sym, '-'}).
--define(EXP,     {sym, 'exp'}).
 -define(IF,      {sym, 'if'}).
 -define(LAMBDA,  {sym, 'lambda'}).
 -define(QUOTE,   {sym, 'quote'}).
 -define(LET,     {sym, 'let'}).
 -define(LETSTAR, {sym, 'let*'}).
 -define(DEFINE,  {sym, 'define'}).
--define(B_AND,   {sym, 'and'}).
--define(B_OR,    {sym, 'or'}).
--define(NOT,     {sym, 'not'}).
--define(LT,      {sym, '<'}).
 -define(MAP,     {sym, 'map'}).
 
 lookup(Name, []) -> erlang:error({unbound_variable, Name});
@@ -32,7 +24,7 @@ extend([], Env) -> Env;
 extend([{Name, Val}|T], Env) -> bind(Name, Val, extend(T, Env)).
 
 
-printlist([]) -> io:format("", []);
+printlist([]) -> ok;
 printlist([E]) -> printexp(E);
 printlist([H|T]) ->
     printexp(H),
@@ -111,49 +103,6 @@ evalexp({list, [?IF, Cond, E1, E2]}, Env) ->
         _ -> erlang:error({bad_if, Cond})
     end;
 
-evalexp({list, [?PLUS|[]]}, Env) -> {{int, 0}, Env};
-evalexp({list, [?PLUS|[H|T]]}, Env) ->
-    {{int, HV}, _} = evalexp(H, Env),
-    {{int, TV}, _} = evalexp({list, [?PLUS|T]}, Env),
-    {{int, HV+TV}, Env};
-
-evalexp({list, [?TIMES|[]]}, Env) -> {{int, 1}, Env};
-evalexp({list, [?TIMES|[H|T]]}, Env) ->
-    {{int, HV}, _} = evalexp(H, Env),
-    {{int, TV}, _} = evalexp({list, [?TIMES|T]}, Env),
-    {{int, HV*TV}, Env};
-
-evalexp({list, [?MINUS, A, B]}, Env) ->
-    {{int, AV}, _} = evalexp(A, Env),
-    {{int, BV}, _} = evalexp(B, Env),
-    {{int, AV-BV}, Env};
-
-evalexp({list, [?EXP, A, B]}, Env) ->
-    {{int, AV}, _} = evalexp(A, Env),
-    {{int, BV}, _} = evalexp(B, Env),
-    {{int, round(math:pow(AV, BV))}, Env};
-
-evalexp({list, [?B_AND, A, B]}, Env) ->
-    {{bool, AV}, _} = evalexp(A, Env),
-    {{bool, BV}, _} = evalexp(B, Env),
-    {{bool, AV and BV}, Env};
-
-evalexp({list, [?B_OR, A, B]}, Env) ->
-    AV = evalexp(A, Env),
-    case AV of
-        {{bool, true}, _}  -> AV;
-        {{bool, false}, _} -> evalexp(B, Env)
-    end;
-
-evalexp({list, [?NOT, A]}, Env) ->
-    {{bool, AV}, _} = evalexp(A, Env),
-    {{bool, not AV}, Env};
-
-evalexp({list, [?LT, A, B]}, Env) ->
-    {{int, AV}, _} = evalexp(A, Env),
-    {{int, BV}, _} = evalexp(B, Env),
-    {{bool, AV < BV}, Env};
-
 evalexp({list, [?MAP, Fn, Elements]}, Env) ->
     {{list, ElementsVal}, _} = evalexp(Elements, Env),
     {FnVal, _} = evalexp(Fn, Env),
@@ -166,16 +115,24 @@ evalexp({list, [?MAP, Fn, Elements]}, Env) ->
                   end, ElementsVal),
     {{list, Results}, Env};
 
+evalexp({list, [{prim, PrimFn}|Args]}, Env) -> PrimFn(Args, Env);
+
 evalexp({list, [LispFn|Args]}, Env) ->
     {FnVal, _} = evalexp(LispFn, Env),
     evalexp({list, [FnVal|Args]}, Env);
 
 evalexp([], Env) -> {ok, Env};
-evalexp([E|[]], Env) -> evalexp(E, Env);
+evalexp([E], Env) -> evalexp(E, Env);
 evalexp([FirstExp|RestExps], Env) ->
-    {_V, Env} = evalexp(FirstExp, []),
-    evalexp(RestExps, Env).
+    {_V, Env2} = evalexp(FirstExp, Env),
+    evalexp(RestExps, Env2).
 
 run(Prog) ->
     {V, _} = evalexp(Prog, basis:basis()),
-    printexp([V]).
+    printexp(V),
+    io:format("~n", []).
+%     try evalexp(Prog, basis:basis()) of
+%         {V, _} -> V
+%     catch
+%         _Exception:Reason -> io:format("ERROR: ~p~n", [Reason])
+%     end.

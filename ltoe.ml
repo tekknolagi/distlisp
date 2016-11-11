@@ -70,6 +70,7 @@ let rec read_object stm =
   let is_symstartchar c =
     is_alpha c || c = '*' || c = '/' || c = '<' || c = '>'
     || c = '=' || c = '?' || c = '!' || c = '-' || c = '+'
+    || c = '@'
   in
   let is_delimiter c =
     is_white c || c = '(' || c = ')' || c = '"' || c = ';'
