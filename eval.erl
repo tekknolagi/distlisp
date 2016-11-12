@@ -97,7 +97,8 @@ evalexp({list, [?LAMBDA, {list, Formals}, Body]}, Env) ->
     {{closure, FormalNames, Body, Env}, Env};
 
 evalexp({list, [?IF, Cond, E1, E2]}, Env) ->
-    case evalexp(Cond, Env) of
+    {CondV, _} = evalexp(Cond, Env),
+    case CondV of
         {bool, true} -> evalexp(E1, Env);
         {bool, false} -> evalexp(E2, Env);
         _ -> erlang:error({bad_if, Cond})
@@ -129,8 +130,7 @@ evalexp([FirstExp|RestExps], Env) ->
 
 run(Prog) ->
     {V, _} = evalexp(Prog, basis:basis()),
-    printexp(V),
-    io:format("~n", []).
+    printexp(V).
 %     try evalexp(Prog, basis:basis()) of
 %         {V, _} -> V
 %     catch

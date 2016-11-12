@@ -11,6 +11,7 @@ basis() ->
                  {'+', {prim, fun add_proc/2}},
                  {'-', {prim, fun sub_proc/2}},
                  {'*', {prim, fun mul_proc/2}},
+                 {'=', {prim, fun eqp_proc/2}},
                  {'exp', {prim, fun exp_proc/2}},
                  {'<', {prim, fun lt_proc/2}},
                  {'>', {prim, fun gt_proc/2}},
@@ -40,6 +41,10 @@ sub_proc([A, B], Env) -> {{int, AV}, _} = eval:evalexp(A, Env),
 mul_proc([A, B], Env) -> {{int, AV}, _} = eval:evalexp(A, Env),
                          {{int, BV}, _} = eval:evalexp(B, Env),
                          {{int, AV*BV}, Env}.
+
+eqp_proc([A, B], Env) -> {AV, _} = eval:evalexp(A, Env),
+                         {BV, _} = eval:evalexp(B, Env),
+                         {{bool, AV =:= BV}, Env}.
 
 exp_proc([A, B], Env) -> {{int, AV}, _} = eval:evalexp(A, Env),
                          {{int, BV}, _} = eval:evalexp(B, Env),
