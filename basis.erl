@@ -95,5 +95,5 @@ list2_proc([A, B], Env) -> {AV, _} = eval:evalexp(A, Env),
 worker_proc([NodeExp], Env) -> {NodeName, _} = eval:evalexp(NodeExp, Env),
                                {list, Workers} = eval:lookup(workers, Env),
                                NewWorkers = {list, [NodeName|Workers]},
-                               {Workers,
+                               {NewWorkers,
                                 eval:bind(workers, NewWorkers, Env)}.
