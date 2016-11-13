@@ -11,6 +11,7 @@ basis() ->
                  {'+', {prim, fun add_proc/2}},
                  {'-', {prim, fun sub_proc/2}},
                  {'*', {prim, fun mul_proc/2}},
+                 {'/', {prim, fun div_proc/2}},
                  {'=', {prim, fun eqp_proc/2}},
                  {'exp', {prim, fun exp_proc/2}},
                  {'<', {prim, fun lt_proc/2}},
@@ -25,10 +26,10 @@ basis() ->
                  {'list1', {prim, fun list1_proc/2}},
                  {'list2', {prim, fun list2_proc/2}},
                  {'workers', {list, [{sym, node()}]}},
-                 {'worker', {prim, fun worker_proc/2}}
+                 {'worker', {prim, fun worker_proc/2}},
+                 {'check-expect', {prim, fun check_expect/2}}
                 ],
                 Defs).
-
 
 add_proc([A, B], Env) -> {{int, AV}, _} = eval:evalexp(A, Env),
                          {{int, BV}, _} = eval:evalexp(B, Env),
@@ -41,6 +42,10 @@ sub_proc([A, B], Env) -> {{int, AV}, _} = eval:evalexp(A, Env),
 mul_proc([A, B], Env) -> {{int, AV}, _} = eval:evalexp(A, Env),
                          {{int, BV}, _} = eval:evalexp(B, Env),
                          {{int, AV*BV}, Env}.
+
+div_proc([A, B], Env) -> {{int, AV}, _} = eval:evalexp(A, Env),
+                         {{int, BV}, _} = eval:evalexp(B, Env),
+                         {{int, trunc(AV/BV)}, Env}.
 
 eqp_proc([A, B], Env) -> {AV, _} = eval:evalexp(A, Env),
                          {BV, _} = eval:evalexp(B, Env),
@@ -97,3 +102,11 @@ worker_proc([NodeExp], Env) -> {NodeName, _} = eval:evalexp(NodeExp, Env),
                                NewWorkers = {list, [NodeName|Workers]},
                                {NewWorkers,
                                 eval:bind(workers, NewWorkers, Env)}.
+
+check_expect([A, B], Env) -> {{bool, Eq}, _} =
+                                 eval:evalexp({list, [{sym, '='}, A, B]}, Env),
+                             if
+                                 Eq   -> io:format("check-expect passed~n", []);
+                                 true -> io:format("check-expect failed~n", [])
+                             end,
+                             {{sym, ok}, Env}.
