@@ -55,6 +55,52 @@ tuplezip([HA|TA], [HB|TB]) -> [{HA,HB}|tuplezip(TA, TB)];
 tuplezip(LA, LB) -> erlang:error({tuplezip_mismatch, LA, LB}).
 
 
+member(_X, []) -> false;
+member(X, [X|_T]) -> true;
+member(X, [_|T]) -> member(X, T).
+
+
+name_free({int, _}, _N) -> false;
+
+name_free({bool, _}, _N) -> false;
+
+name_free({sym, V}, N) -> V =:= N;
+
+name_free({list, [?IF, E1, E2, E3]}, N) ->
+    name_free(E1, N) or
+    name_free(E2, N) or
+    name_free(E3, N);
+
+name_free({list, [?LET, {list, Bindings}, Body]}, N) ->
+    lists:any(fun ({list, [_, E]}) -> name_free(E, N) end, Bindings) or
+    (not member(N, lists:map(fun ({list, [Name, _]}) -> Name end, Bindings)) and
+     name_free(Body, N));
+
+name_free({list, [?LETSTAR, {list, []}, Body]}, N) ->
+    name_free(Body, N);
+name_free({list, [?LETSTAR, {list, [B|BS]}, Body]}, N) ->
+    name_free({list, [?LET,
+                      {list, [B]},
+                      {list, [?LETSTAR, {list, BS}, Body]}]}, N);
+
+name_free({list, [?LAMBDA, {list, Formals}, Body]}, N) ->
+    not member(N, lists:map(fun ({sym, Name}) -> Name end, Formals)) and
+    name_free(Body, N);
+
+name_free({list, []}, _N) -> false;
+
+name_free({list, [FnName|Args]}, N) ->
+    lists:any(fun (E) -> name_free(E, N) end, [FnName|Args]).
+
+% fun improve (l, rho) = (l, List.filter (fn (x, _) => freeIn (LAMBDA l) x) rho)
+improve({Formals, Body}, Env) -> {{Formals, Body},
+                    lists:filter(fun ({X, _}) ->
+                                         name_free({list, [?LAMBDA,
+                                                           {list, Formals},
+                                                           Body]}, X)
+                                 end,
+                                 Env)}.
+
 evalexp({int, Val}, Env) -> {{int, Val}, Env};
 
 evalexp({bool, Val}, Env) -> {{bool, Val}, Env};
@@ -94,7 +140,8 @@ evalexp({list, [{closure, Formals, Body, CapturedEnv}|Actuals]}, Env) ->
 
 evalexp({list, [?LAMBDA, {list, Formals}, Body]}, Env) ->
     FormalNames = lists:map(fun ({sym, Name}) -> Name end, Formals),
-    {{closure, FormalNames, Body, Env}, Env};
+    {_, ImprovedEnv} = improve({Formals, Body}, Env),
+    {{closure, FormalNames, Body, ImprovedEnv}, Env};
 
 evalexp({list, [?IF, Cond, E1, E2]}, Env) ->
     {CondV, _} = evalexp(Cond, Env),
@@ -130,7 +177,8 @@ evalexp([FirstExp|RestExps], Env) ->
 
 run(Prog) ->
     {V, _} = evalexp(Prog, basis:basis()),
-    printexp(V).
+    io:format("~p~n", [V]).
+    % printexp(V).
 %     try evalexp(Prog, basis:basis()) of
 %         {V, _} -> V
 %     catch
