@@ -46,6 +46,8 @@
            (sndhalf (drop half xs)))
       (merge (mergesort fsthalf) (mergesort sndhalf)))))
 
+(val sort mergesort)
+
 (check-expect (mergesort '()) '())
 (check-expect (mergesort '(1)) '(1))
 (check-expect (mergesort '(4 5 6 1 2 3)) '(1 2 3 4 5 6))

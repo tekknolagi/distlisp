@@ -12,6 +12,7 @@
 -define(LET,     {sym, 'let'}).
 -define(LETSTAR, {sym, 'let*'}).
 -define(DEFINE,  {sym, 'define'}).
+-define(VAL,     {sym, 'val'}).
 -define(MAP,     {sym, 'map'}).
 -define(EVAL,    {sym, 'eval'}).
 
@@ -135,6 +136,10 @@ evalexp({list, [?QUOTE, QuotedExp]}, Env) -> {QuotedExp, Env};
 evalexp({list, [?DEFINE, {sym, Name}, Formals, Body]}, Env) ->
     {Closure, _} = evalexp({list, [?LAMBDA, Formals, Body]}, Env),
     {Closure, bind(Name, Closure, Env)};
+
+evalexp({list, [?VAL, {sym, Name}, Exp]}, Env) ->
+    {Val, _} = evalexp(Exp, Env),
+    {Val, bind(Name, Val, Env)};
 
 evalexp({list, [{closure, Formals, Body, CapturedEnv}|Actuals]}, Env) ->
     ActualValues = lists:map(fun (Actual) ->
