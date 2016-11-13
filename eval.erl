@@ -4,6 +4,8 @@
 -export([lookup/2, bind/3, extend/2]).
 -export([printexp/1]).
 
+-export([name_free/2]).
+
 -define(IF,      {sym, 'if'}).
 -define(LAMBDA,  {sym, 'lambda'}).
 -define(QUOTE,   {sym, 'quote'}).
@@ -11,6 +13,7 @@
 -define(LETSTAR, {sym, 'let*'}).
 -define(DEFINE,  {sym, 'define'}).
 -define(MAP,     {sym, 'map'}).
+-define(EVAL,    {sym, 'eval'}).
 
 lookup(Name, []) -> erlang:error({unbound_variable, Name});
 lookup(Name, [{K, V}|_T]) when Name == K -> V;
@@ -105,6 +108,10 @@ evalexp({int, Val}, Env) -> {{int, Val}, Env};
 
 evalexp({bool, Val}, Env) -> {{bool, Val}, Env};
 
+evalexp({sym, env}, Env) -> {lists:map(fun ({Name, Val}) ->
+                                               {{sym, Name}, Val}
+                                       end, Env),
+                             Env};
 evalexp({sym, Name}, Env) -> {lookup(Name, Env), Env};
 
 evalexp({list, [?LETSTAR, {list, []}, Body]}, Env) ->
@@ -164,6 +171,10 @@ evalexp({list, [?MAP, Fn, Elements]}, Env) ->
     {{list, Results}, Env};
 
 evalexp({list, [{prim, PrimFn}|Args]}, Env) -> PrimFn(Args, Env);
+
+evalexp({list, [?EVAL, GivenExp]}, Env) ->
+    {ExpVal, _} = evalexp(GivenExp, Env),
+    evalexp(ExpVal, Env);
 
 evalexp({list, [LispFn|Args]}, Env) ->
     {FnVal, _} = evalexp(LispFn, Env),
