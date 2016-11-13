@@ -103,10 +103,10 @@ worker_proc([NodeExp], Env) -> {NodeName, _} = eval:evalexp(NodeExp, Env),
                                {NewWorkers,
                                 eval:bind(workers, NewWorkers, Env)}.
 
-check_expect([A, B], Env) -> {{bool, Eq}, _} =
-                                 eval:evalexp({list, [{sym, '='}, A, B]}, Env),
-                             if
-                                 Eq   -> io:format("check-expect passed~n", []);
-                                 true -> io:format("check-expect failed~n", [])
-                             end,
-                             {{sym, ok}, Env}.
+check_expect([A, B], Env) ->
+    {{bool, AreEq}, _} = eval:evalexp({list, [{sym, '='}, A, B]}, Env),
+    if
+        AreEq -> io:format("check-expect passed~n", []);
+        true  -> io:format("check-expect failed~n", [])
+    end,
+    {{sym, ok}, Env}.
