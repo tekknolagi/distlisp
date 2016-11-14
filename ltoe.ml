@@ -1,15 +1,11 @@
 type stream =
   { mutable line_num: int; mutable chr: char list; chan: in_channel };;
 
-type 'a llist =
-  | Nil
-  | Cons of 'a * 'a llist;;
-
 type lobject =
   | Fixnum of int
   | Boolean of bool
   | Symbol of string
-  | List of lobject llist;;
+  | List of lobject list;;
 
 exception SyntaxError of string;;
 
@@ -67,12 +63,12 @@ let rec read_object stm =
     eat_whitespace stm;
     let c = read_char stm in
     if c = ')' then
-      Nil
+        []
     else
       let _ = unread_char stm c in
       let car = read_object stm in
       let cdr = read_list stm in
-      Cons(car, cdr)
+      (car::cdr)
   in
   let is_symstartchar c =
     is_alpha c || c = '*' || c = '/' || c = '<' || c = '>'
@@ -104,13 +100,13 @@ let rec read_object stm =
     | 'f' -> Boolean(false)
     | x -> raise (SyntaxError ("Invalid boolean literal " ^ Char.escaped x))
   else if c = '(' then
-    List(read_list stm)
+    List (read_list stm)
   else if is_symstartchar c then
     let _ = unread_char stm c in
     read_symbol stm ""
   else if c = '\'' then
     let obj = read_object stm in
-    List(Cons(Symbol("quote"), Cons(obj, Nil)))
+    List (Symbol("quote") :: [obj])
   else if (is_digit c) || (c = '~')
   then read_fixnum (Char.escaped (if c='~' then '-' else c))
   else raise (SyntaxError ("Unexpected char " ^ Char.escaped c));;
@@ -123,12 +119,12 @@ let rec print_object (obj : lobject) =
   in
   let rec print_list obj =
     match obj with
-    | Cons(car,cdr) ->
+    | (car::cdr) ->
         print_object car;
-        if cdr=Nil then ()
+        if cdr=[] then ()
         else print_string ", ";
         print_list cdr;
-    | Nil -> ()
+    | [] -> ()
   in
   match obj with
   | Fixnum(value) ->
@@ -143,9 +139,9 @@ let rec print_object (obj : lobject) =
           print_string "{sym, '";
           print_string value;
           print_string "'}"
-  | List(es) ->
+  | List(xs) ->
           print_string "{list, [";
-          print_list es;
+          print_list xs;
           print_string "]}";;
 
 let rec main () =
