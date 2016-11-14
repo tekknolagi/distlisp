@@ -8,10 +8,12 @@ basis() ->
                         NewEnv
                 end,
                 [
+                 {'rat', {prim, fun rat_proc/2}},
                  {'+', {prim, binop(fun erlang:'+'/2, int)}},
+                 {'+r', {prim, fun plusrat_proc/2}},
                  {'-', {prim, binop(fun erlang:'-'/2, int)}},
                  {'*', {prim, binop(fun erlang:'*'/2, int)}},
-                 {'/', {prim, fun div_proc/2}},
+                 {'/', {prim, binop(fun intdiv/2, int)}},
                  {'=', {prim, binop(fun erlang:'=:='/2, bool)}},
                  {'exp', {prim, fun exp_proc/2}},
                  {'<', {prim, binop(fun erlang:'<'/2, bool)}},
@@ -35,9 +37,21 @@ binop(F, RT) ->
             {{RT, F(AV, BV)}, Env}
     end.
 
-div_proc([A, B], Env) -> {{int, AV}, _} = eval:evalexp(A, Env),
-                         {{int, BV}, _} = eval:evalexp(B, Env),
-                         {{int, trunc(AV/BV)}, Env}.
+rat_proc([N, D], Env) -> {{rat, N, D}, Env}.
+
+gcd(A, 0) -> A;
+gcd(A, B) -> gcd(B, A rem B).
+
+intdiv(A, B) -> trunc(A/B).
+
+simplify(N, D) ->
+    Gcd = gcd(N, D),
+    {rat, {int, intdiv(N, Gcd)}, {int, intdiv(D, Gcd)}}.
+
+plusrat_proc([A, B], Env) ->
+    {{rat, {int, AN}, {int, AD}}, _} = eval:evalexp(A, Env),
+    {{rat, {int, BN}, {int, BD}}, _} = eval:evalexp(B, Env),
+    {simplify(AN*BD+AD*BN, AD*BD), Env}.
 
 exp_proc([A, B], Env) -> {{int, AV}, _} = eval:evalexp(A, Env),
                          {{int, BV}, _} = eval:evalexp(B, Env),

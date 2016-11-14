@@ -39,6 +39,7 @@ printlist([H|T]) ->
 
 
 printexp({int, Val}) -> io:format("~p", [Val]);
+printexp({rat, Num, Denom}) -> io:format("~p/~p", [Num, Denom]);
 printexp({sym, Val}) -> io:format("~p", [Val]);
 printexp({bool, true}) -> io:format("#t", []);
 printexp({bool, false}) -> io:format("#f", []);
@@ -67,6 +68,8 @@ member(X, [_|T]) -> member(X, T).
 
 
 name_free({int, _}, _N) -> false;
+
+name_free({rat, _, _}, _N) -> false;
 
 name_free({bool, _}, _N) -> false;
 
@@ -108,6 +111,8 @@ improve({Formals, Body}, Env) -> {{Formals, Body},
                                  Env)}.
 
 evalexp({int, Val}, Env) -> {{int, Val}, Env};
+
+evalexp({rat, Num, Denom}, Env) -> {{rat, Num, Denom}, Env};
 
 evalexp({bool, Val}, Env) -> {{bool, Val}, Env};
 
