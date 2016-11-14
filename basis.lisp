@@ -1,3 +1,12 @@
+(define null? (xs) (= xs '()))
+
+(check-expect (null? '()) #t)
+(check-expect (null? '(1 2 3)) #f)
+
+(define list1 (x) (cons x '()))
+
+(define list2 (x y) (cons x (list1 y)))
+
 (define >= (a b) (not (< a b)))
 
 (define > (a b) (and (not (= a b)) (not (< a b))))

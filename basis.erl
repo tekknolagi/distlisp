@@ -8,76 +8,55 @@ basis() ->
                         NewEnv
                 end,
                 [
-                 {'+', {prim, fun add_proc/2}},
-                 {'-', {prim, fun sub_proc/2}},
-                 {'*', {prim, fun mul_proc/2}},
+                 {'+', {prim, binop(fun erlang:'+'/2, int)}},
+                 {'-', {prim, binop(fun erlang:'-'/2, int)}},
+                 {'*', {prim, binop(fun erlang:'*'/2, int)}},
                  {'/', {prim, fun div_proc/2}},
-                 {'=', {prim, fun eqp_proc/2}},
+                 {'=', {prim, binop(fun erlang:'=:='/2, bool)}},
                  {'exp', {prim, fun exp_proc/2}},
-                 {'<', {prim, fun lt_proc/2}},
-                 {'>', {prim, fun gt_proc/2}},
+                 {'<', {prim, binop(fun erlang:'<'/2, bool)}},
+                 {'>', {prim, binop(fun erlang:'>'/2, bool)}},
                  {'not', {prim, fun not_proc/2}},
                  {'and', {prim, fun and_proc/2}},
                  {'or', {prim, fun or_proc/2}},
-                 {'null?', {prim, fun nullp_proc/2}},
                  {'cons', {prim, fun cons_proc/2}},
                  {'car', {prim, fun car_proc/2}},
                  {'cdr', {prim, fun cdr_proc/2}},
-                 {'list1', {prim, fun list1_proc/2}},
-                 {'list2', {prim, fun list2_proc/2}},
                  {'workers', {list, [{sym, node()}]}},
                  {'worker', {prim, fun worker_proc/2}},
                  {'check-expect', {prim, fun check_expect/2}}
                 ],
                 Defs).
 
-add_proc([A, B], Env) -> {{int, AV}, _} = eval:evalexp(A, Env),
-                         {{int, BV}, _} = eval:evalexp(B, Env),
-                         {{int, AV+BV}, Env}.
-
-sub_proc([A, B], Env) -> {{int, AV}, _} = eval:evalexp(A, Env),
-                         {{int, BV}, _} = eval:evalexp(B, Env),
-                         {{int, AV-BV}, Env}.
-
-mul_proc([A, B], Env) -> {{int, AV}, _} = eval:evalexp(A, Env),
-                         {{int, BV}, _} = eval:evalexp(B, Env),
-                         {{int, AV*BV}, Env}.
+binop(F, RT) ->
+    fun ([A, B], Env) ->
+            {{_, AV}, _} = eval:evalexp(A, Env),
+            {{_, BV}, _} = eval:evalexp(B, Env),
+            {{RT, F(AV, BV)}, Env}
+    end.
 
 div_proc([A, B], Env) -> {{int, AV}, _} = eval:evalexp(A, Env),
                          {{int, BV}, _} = eval:evalexp(B, Env),
                          {{int, trunc(AV/BV)}, Env}.
 
-eqp_proc([A, B], Env) -> {AV, _} = eval:evalexp(A, Env),
-                         {BV, _} = eval:evalexp(B, Env),
-                         {{bool, AV =:= BV}, Env}.
-
 exp_proc([A, B], Env) -> {{int, AV}, _} = eval:evalexp(A, Env),
                          {{int, BV}, _} = eval:evalexp(B, Env),
                          {{int, round(math:pow(AV, BV))}, Env}.
-
-lt_proc([A, B], Env)  -> {{int, AV}, _} = eval:evalexp(A, Env),
-                         {{int, BV}, _} = eval:evalexp(B, Env),
-                         {{bool, AV < BV}, Env}.
-
-gt_proc([A, B], Env)  -> {{int, AV}, _} = eval:evalexp(A, Env),
-                         {{int, BV}, _} = eval:evalexp(B, Env),
-                         {{bool, AV > BV}, Env}.
 
 not_proc([A], Env) -> {{bool, V}, _} = eval:evalexp(A, Env),
                       {{bool, not V}, Env}.
 
 and_proc([A, B], Env) -> {{bool, AV}, _} = eval:evalexp(A, Env),
-                         {{bool, BV}, _} = eval:evalexp(B, Env),
-                         {{bool, AV and BV}, Env}.
+                         if
+                             AV == false -> {{bool, false}, Env};
+                             true        -> eval:evalexp(B, Env)
+                         end.
 
 or_proc([A, B], Env) -> {{bool, AV}, _} = eval:evalexp(A, Env),
                         if
                             AV == true -> {{bool, true}, Env};
                             true       -> eval:evalexp(B, Env)
                         end.
-
-nullp_proc([L], Env) -> {LV, _} = eval:evalexp(L, Env),
-                        {{bool, LV == {list, []}}, Env}.
 
 cons_proc([X, XS], Env) -> {XV, _} = eval:evalexp(X, Env),
                            {{list, XSV}, _} = eval:evalexp(XS, Env),
@@ -88,14 +67,6 @@ car_proc([L], Env) -> {{list, [H|_T]}, _} = eval:evalexp(L, Env),
 
 cdr_proc([L], Env) -> {{list, [_H|T]}, _} = eval:evalexp(L, Env),
                       {{list, T}, Env}.
-
-list1_proc([A], Env) -> {AV, _} = eval:evalexp(A, Env),
-                        {{list, [AV]}, Env}.
-
-
-list2_proc([A, B], Env) -> {AV, _} = eval:evalexp(A, Env),
-                           {BV, _} = eval:evalexp(B, Env),
-                           {{list, [AV, BV]}, Env}.
 
 worker_proc([NodeExp], Env) -> {NodeName, _} = eval:evalexp(NodeExp, Env),
                                {list, Workers} = eval:lookup(workers, Env),
