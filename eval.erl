@@ -15,6 +15,7 @@
 -define(VAL,     {sym, 'val'}).
 -define(MAP,     {sym, 'map'}).
 -define(EVAL,    {sym, 'eval'}).
+-define(APPLY,   {sym, 'apply'}).
 
 lookup(Name, []) -> erlang:error({unbound_variable, Name});
 lookup(Name, [{K, V}|_T]) when Name == K -> V;
@@ -180,6 +181,10 @@ evalexp({list, [{prim, PrimFn}|Args]}, Env) -> PrimFn(Args, Env);
 evalexp({list, [?EVAL, GivenExp]}, Env) ->
     {ExpVal, _} = evalexp(GivenExp, Env),
     evalexp(ExpVal, Env);
+
+evalexp({list, [?APPLY, FnExp, ArgExps]}, Env) ->
+    {{list, ArgVals}, _} = evalexp(ArgExps, Env),
+    evalexp({list, [FnExp|ArgVals]}, Env);
 
 evalexp({list, [LispFn|Args]}, Env) ->
     {FnVal, _} = evalexp(LispFn, Env),
