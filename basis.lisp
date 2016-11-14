@@ -52,3 +52,14 @@
 (check-expect (mergesort '(1)) '(1))
 (check-expect (mergesort '(4 5 6 1 2 3)) '(1 2 3 4 5 6))
 (check-expect (mergesort '(3 4 5 1 2)) '(1 2 3 4 5))
+
+(define o (f g)
+  (lambda (x) (f (g x))))
+
+(let ((inc (lambda (x) (+ x 1))))
+  (check-expect ((o inc inc) 0) 2))
+
+(define curry2 (f)
+  (lambda (x)
+    (lambda (y)
+      (f y x))))

@@ -17,9 +17,10 @@
 -define(EVAL,    {sym, 'eval'}).
 -define(APPLY,   {sym, 'apply'}).
 
+
 lookup(Name, []) -> erlang:error({unbound_variable, Name});
-lookup(Name, [{K, V}|_T]) when Name == K -> V;
-lookup(Name, [{K, _V}|T]) when Name =/= K -> lookup(Name, T).
+lookup(Name, [{Name, V}|_T]) -> V;
+lookup(Name, [{_K, _V}|T]) -> lookup(Name, T).
 
 
 bind(Name, Val, Env) -> [{Name, Val}|Env].
