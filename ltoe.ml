@@ -38,6 +38,13 @@ let rec eat_whitespace stm =
     unread_char stm c;
     ();;
 
+let rec eat_line stm =
+  let c = read_char stm in
+  if c != '\n' then
+    eat_line stm
+  else
+    ();;
+
 let rec read_object stm =
   let is_digit c =
     let code = Char.code c in
@@ -88,7 +95,9 @@ let rec read_object stm =
   in
   eat_whitespace stm;
   let c = read_char stm in
-  if c = '#' then
+  if c = ';' then
+    let _ = eat_line stm in read_object stm
+  else if c = '#' then
     let nc = read_char stm in
     match nc with
     | 't' -> Boolean(true)
