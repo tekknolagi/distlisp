@@ -41,19 +41,21 @@ printlist([H|T]) ->
 printexp({int, Val}) -> io:format("~p", [Val]);
 printexp({rat, Num, Denom}) -> io:format("~p/~p", [Num, Denom]);
 printexp({sym, Val}) -> io:format("~p", [Val]);
-printexp({bool, true}) -> io:format("#t", []);
-printexp({bool, false}) -> io:format("#f", []);
+printexp({bool, true}) -> io:format("#t");
+printexp({bool, false}) -> io:format("#f");
 printexp({quote, QuotedExp}) ->
-    io:format("'", []),
+    io:format("'"),
     printexp(QuotedExp);
 printexp({list, L}) ->
-    io:format("(", []),
+    io:format("("),
     printlist(L),
-    io:format(")", []);
-printexp([]) -> io:format("", []);
+    io:format(")");
+printexp({closure, _, _, _}) ->
+    io:format("<closure>");
+printexp([]) -> io:format("");
 printexp([H|T]) ->
     printexp(H),
-    io:format("~n", []),
+    io:format("~n"),
     printexp(T).
 
 
