@@ -14,9 +14,8 @@ element -> sym : remtok('$1').
 element -> bool : remtok('$1').
 element -> int : remtok('$1').
 element -> list : '$1'.
-element -> quote element : cons({sym,quote}, '$2').
+element -> quote element : mklist([{sym,quote}, '$2']).
 
 Erlang code.
-cons(A, {list, Els}) -> {list, [A|Els]}.
 mklist(Ls) -> {list, Ls}.
 remtok({T, _L, V}) -> {T, V}.

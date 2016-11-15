@@ -1,16 +1,15 @@
 -module(reader).
--export([read_program/0, read_program/1]).
+-export([read_program/0, read_program/2]).
 
-read_program(FileName) ->
-    {ok, Data} = file:read_file(FileName),
-    {ok, T, _} = scanner:string(binary:bin_to_list(Data)),
-    io:format("scanned: ~p~n", [T]),
+read_program(string, Data) ->
+    {ok, T, _} = scanner:string(Data),
     {ok, {form, Prog}} = parser:parse(T),
-    Prog.
+    Prog;
+
+read_program(file, FileName) ->
+    {ok, Data} = file:read_file(FileName),
+    read_program(string, binary:bin_to_list(Data)).
 
 read_program() ->
     S = io:get_line(">>> "),
-    {ok, T, _} = scanner:string(S),
-    io:format("scanned: ~p~n", [T]),
-    {ok, {form, Prog}} = parser:parse(T),
-    Prog.
+    read_program(string, S).

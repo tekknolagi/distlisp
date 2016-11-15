@@ -2,7 +2,7 @@
 -export([basis/0]).
 
 basis() ->
-    {ok, Defs} = file:consult("generated_basis.erl"),
+    Defs = reader:read_program(file, "basis.lisp"),
     lists:foldl(fun (Cur, Env) ->
                         {_, NewEnv} = eval:evalexp(Cur, Env),
                         NewEnv
