@@ -40,7 +40,7 @@ printlist([H|T]) ->
 
 printexp({int, Val}) -> io:format("~p", [Val]);
 printexp({rat, Num, Denom}) -> io:format("~p/~p", [Num, Denom]);
-printexp({sym, Val}) -> io:format("~p", [Val]);
+printexp({sym, Val}) -> io:format("~s", [Val]);
 printexp({bool, true}) -> io:format("#t");
 printexp({bool, false}) -> io:format("#f");
 printexp({quote, QuotedExp}) ->

@@ -14,12 +14,14 @@ repl() ->
     repl(basis:basis()).
 repl(Env) ->
     try eval:evalexp(read_program(string, io:get_line("> ")), Env) of
-        {Val, NewEnv} ->  if Val =/= {sym, quit} ->
+        {Val, NewEnv} ->  if Val == {sym, ok} ->
+                                 repl(eval:bind(it, Val, NewEnv));
+                             Val == {sym, quit} ->
+                                 io:format("Thank you for trying DLisp.~n");
+                             true ->
                                  eval:printexp(Val),
                                  io:format("~n"),
-                                 repl(eval:bind(it, Val, NewEnv));
-                             true ->
-                                 io:format("Thank you for trying DLisp.~n")
+                                 repl(eval:bind(it, Val, NewEnv))
                           end
     catch
         error:{unbound_variable,V} -> io:format("ERROR: Unbound variable ~p~n", [V]),

@@ -28,7 +28,8 @@ basis() ->
                  {'worker', {prim, fun worker_proc/2}},
                  {'check-expect', {prim, fun check_expect/2}},
                  {'save-state', {prim, fun save_state/2}},
-                 {'load-state', {prim, fun load_state/2}}
+                 {'load-state', {prim, fun load_state/2}},
+                 {'print', {prim, fun print_proc/2}}
                 ],
                 Defs).
 
@@ -120,7 +121,14 @@ save_state([FileName], Env) ->
                          io_lib:fwrite("~p.\n", [EnvNoPrims])),
     {{bool, true}, Env}.
 
+
 load_state([FileName], Env) ->
     {{sym, FileNameVal}, _} = eval:evalexp(FileName, Env),
     {ok, [NewEnv]} = file:consult(atom_to_list(FileNameVal)),
     {{bool, true}, NewEnv ++ Env}.
+
+
+print_proc([Exp], Env) -> {Val, _} = eval:evalexp(Exp, Env),
+                          eval:printexp(Val),
+                          io:format("~n"),
+                          {{sym, ok}, Env}.
