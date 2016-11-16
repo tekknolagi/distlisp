@@ -118,10 +118,6 @@ evalexp({rat, Num, Denom}, Env) -> {{rat, Num, Denom}, Env};
 
 evalexp({bool, Val}, Env) -> {{bool, Val}, Env};
 
-%evalexp({sym, env}, Env) -> {{list, lists:map(fun ({Name, Val}) ->
-%                                                      {{sym, Name}, Val}
-%                                              end, Env)},
-%                             Env};
 evalexp({sym, Name}, Env) -> {lookup(Name, Env), Env};
 
 evalexp({list, [?LETSTAR, {list, []}, Body]}, Env) ->
