@@ -3,6 +3,7 @@ Terminals quote sym int bool left right.
 Rootsymbol form.
 
 form -> elements : {form,'$1'}.
+form -> '$empty' : {form, {sym, ok}}.
 
 list -> left right : mklist([]).
 list -> left elements right : mklist('$2').

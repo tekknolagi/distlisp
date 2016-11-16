@@ -29,7 +29,9 @@ basis() ->
                  {'check-expect', {prim, fun check_expect/2}},
                  {'save-state', {prim, fun save_state/2}},
                  {'load-state', {prim, fun load_state/2}},
-                 {'print', {prim, fun print_proc/2}}
+                 {'print', {prim, fun print_proc/2}},
+                 {'c', {prim, fun compile_proc/2}},
+                 {'ok', {sym, ok}}
                 ],
                 Defs).
 
@@ -132,3 +134,10 @@ print_proc([Exp], Env) -> {Val, _} = eval:evalexp(Exp, Env),
                           eval:printexp(Val),
                           io:format("~n"),
                           {{sym, ok}, Env}.
+
+
+compile_proc([Name], Env) -> {{sym, NameVal}, _} = eval:evalexp(Name, Env),
+                             code:purge(NameVal),
+                             {ok, NameVal} = compile:file(NameVal),
+                             code:load_file(NameVal),
+                             throw(code_reload).

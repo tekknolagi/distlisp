@@ -1,9 +1,8 @@
 Definitions.
 
 D   = [0-9]
-L   = [A-Za-z_\-\/\!\?\+\*\=\>\<0-9]
-WS  = ([\000-\s]|%.*)
-N   = [\n]
+L   = [A-Za-z_\-\/\!\?\+\*\=\>\<0-9\.]
+WS  = ([\000-\s]|%.*|[\t\n\s\r])
 
 Rules.
 
@@ -14,7 +13,6 @@ Rules.
 [)]    : {token,{right,TokenLine}}.
 [\']   : {token,{quote,TokenLine}}.
 {WS}+  : skip_token.
-{N}+   : skip_token.
 
 Erlang code.
 list_to_bool([$#|"t"]) ->

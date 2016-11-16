@@ -132,7 +132,7 @@ evalexp({list, [?LET, {list, Bindings}, Body]}, Env) ->
     BoundVars = lists:map(fun ({list, [{sym, Name}, Exp]}) ->
                                   {Val, _} = evalexp(Exp, Env),
                                   {Name, Val}
-                          end, Bindings), 
+                          end, Bindings),
     NewEnv = extend(BoundVars, Env),
     evalexp(Body, NewEnv);
 

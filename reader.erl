@@ -1,5 +1,5 @@
 -module(reader).
--export([repl/0, read_program/2]).
+-export([repl/0, repl/1, read_program/2]).
 
 read_program(string, Data) ->
     {ok, T, _} = scanner:string(Data),

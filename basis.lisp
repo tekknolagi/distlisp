@@ -72,3 +72,20 @@
   (lambda (x)
     (lambda (y)
       (f y x))))
+
+(define reverse (xs)
+  (let ((revapp (lambda (xs acc)
+                  (if (null? xs)
+                    acc
+                    (revapp (cdr xs) (cons (car xs) acc))))))
+    (revapp xs '())))
+
+(define range (start end)
+  (if (>= start end)
+    '()
+    (cons start (range (+ start 1) end))))
+
+(define fold (f acc xs)
+  (if (null? xs)
+    acc
+    (fold f (f (car xs) acc) (cdr xs))))
