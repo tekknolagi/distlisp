@@ -96,3 +96,25 @@ check_expect([A, B], Env) ->
         true  -> io:format("check-expect failed~n", []),
                  {{bool, false}, Env}
     end.
+
+remove_prims([]) -> [];
+remove_prims([{_, {prim, _}}|T]) -> remove_prims(T);
+remove_prims([H|T]) -> [remove_prims(H)|remove_prims(T)];
+
+remove_prims({closure, Formals, Body, CapturedEnv}) ->
+    {closure, Formals, remove_prims(Body), remove_prims(CapturedEnv)};
+remove_prims(O) ->
+    O.
+
+save_state([FileName], Env) ->
+    {{sym, FileNameVal}, _} = eval:evalexp(FileName, Env),
+    EnvNoPrims = remove_prims(Env),
+    io:format("no prims: ~p~n", [EnvNoPrims]),
+    ok = file:write_file(atom_to_list(FileNameVal),
+                         io_lib:fwrite("~p.\n", [EnvNoPrims])),
+    {{bool, true}, Env}.
+
+load_state([FileName], Env) ->
+    {{sym, FileNameVal}, _} = eval:evalexp(FileName, Env),
+    {ok, NewEnv} = file:consult(atom_to_list(FileNameVal)),
+    {{bool, true}, NewEnv}.
