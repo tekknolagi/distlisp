@@ -24,8 +24,18 @@ repl(Env) ->
                                  repl(eval:bind(it, Val, NewEnv))
                           end
     catch
-        error:{unbound_variable,V} -> io:format("ERROR: Unbound variable ~p~n", [V]),
-                                      repl(Env);
-        error:E -> io:format("ERROR: ~p~n", [E]),
-                   repl(Env)
+        throw:code_reload ->
+            repl(eval:bind(it, {sym, ok}, Env));
+        error:{unbound_variable,V} ->
+            io:format("ERROR: Unbound variable ~p~n", [V]),
+            repl(Env);
+        error:{badmatch, G} ->
+            io:format("ERROR: Type mismatch: ~p~n", [G]),
+            repl(Env);
+        error:{tuplezip_mismatch, _, _} ->
+            io:format("ERROR: Wrong number of arguments~n"),
+            repl(Env);
+        error:E ->
+            io:format("ERROR: ~p~n", [E]),
+            repl(Env)
     end.
