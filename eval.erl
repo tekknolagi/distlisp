@@ -1,6 +1,5 @@
 -module(eval).
 -export([evalexp/2]).
--export([run/1]).
 -export([lookup/2, bind/3, extend/2, extend/3]).
 -export([printexp/1]).
 
@@ -49,8 +48,11 @@ printlist([H|T]) ->
     printlist(T).
 
 
-printexp({int, Val}) -> io:format("~p", [Val]);
-printexp({rat, Num, Denom}) -> io:format("~p/~p", [Num, Denom]);
+printexp({int, Val}) -> io:format("~B", [Val]);
+printexp({rat, Num, Denom}) ->
+    printexp(Num),
+    io:format("/"),
+    printexp(Denom);
 printexp({sym, Val}) -> io:format("~s", [Val]);
 printexp({bool, true}) -> io:format("#t");
 printexp({bool, false}) -> io:format("#f");
@@ -61,10 +63,8 @@ printexp({list, L}) ->
     io:format("("),
     printlist(L),
     io:format(")");
-printexp({prim, _}) ->
-    io:format("<prim>");
-printexp({closure, _, _, _}) ->
-    io:format("<closure>");
+printexp({prim, _}) -> io:format("<prim>");
+printexp({closure, _, _, _}) -> io:format("<closure>");
 printexp([]) -> io:format("");
 printexp([H|T]) ->
     printexp(H),
@@ -159,10 +159,17 @@ evalexp({list, [?VAL, {sym, Name}, Exp]}, Env) ->
     {Val, _} = evalexp(Exp, Env),
     {Val, bind(Name, Val, Env)};
 
+evalexp({list, [{closure, Formals, Body, CapturedEnv}|Actuals]}, Env)
+  when Formals =:= ['...'] ->
+    ActualValues = lists:map(fun (Actual) ->
+                                     {Val, _} = evalexp(Actual, Env), Val
+                             end, Actuals),
+    CombinedEnv = bind('...', {list, ActualValues}, extend(CapturedEnv, Env)),
+    evalexp(Body, CombinedEnv);
+
 evalexp({list, [{closure, Formals, Body, CapturedEnv}|Actuals]}, Env) ->
     ActualValues = lists:map(fun (Actual) ->
-                                     {Val, _} = evalexp(Actual, Env),
-                                     Val
+                                     {Val, _} = evalexp(Actual, Env), Val
                              end, Actuals),
     FormalsEnv = tuplezip(Formals, ActualValues),
     CombinedEnv = extend(FormalsEnv, extend(CapturedEnv, Env)),
@@ -212,13 +219,3 @@ evalexp([E], Env) -> evalexp(E, Env);
 evalexp([FirstExp|RestExps], Env) ->
     {_V, Env2} = evalexp(FirstExp, Env),
     evalexp(RestExps, Env2).
-
-run(Prog) ->
-    {V, _} = evalexp(Prog, basis:basis()),
-    io:format("~p~n", [V]).
-    % printexp(V).
-%     try evalexp(Prog, basis:basis()) of
-%         {V, _} -> V
-%     catch
-%         _Exception:Reason -> io:format("ERROR: ~p~n", [Reason])
-%     end.

@@ -15,6 +15,20 @@
 
 (define min (a b) (if (< a b) a b))
 
+(define fold (f acc xs)
+  (if (null? xs)
+    acc
+    (fold f (f (car xs) acc) (cdr xs))))
+
+(val foldl fold)
+
+(define + (...) (fold +2 0 ...))
+(define * (...) (fold *2 1 ...))
+(define * (...) (fold *2 1 ...))
+(val / /2)
+(val - -2)
+(define fac (n) (apply * (range 1 (+ n 1))))
+
 (define filter (p? xs)
   (if (null? xs)
     '()
@@ -85,11 +99,6 @@
     '()
     (cons start (range (+ start 1) end))))
 
-(define fold (f acc xs)
-  (if (null? xs)
-    acc
-    (fold f (f (car xs) acc) (cdr xs))))
-
 (define quit () 'quit)
 (val q quit)
 
@@ -107,3 +116,4 @@
 
 (define isbound (alist key)
   (find alist key (lambda () #f) (lambda (x) #t)))
+

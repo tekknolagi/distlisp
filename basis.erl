@@ -1,10 +1,9 @@
 -module(basis).
 -export([basis/0]).
--export([binop/2, rat_proc/2, plusrat_proc/2, intdiv/2, exp_proc/2, not_proc/2,
-         and_proc/2, or_proc/2, cons_proc/2, car_proc/2, cdr_proc/2,
-         worker_proc/2, check_expect/2, save_state/2, load_state/2,
-         print_proc/2, compile_proc/2, env_proc/2, class_proc/2, gcd/2,
-         remove_prims/1, bif/1]).
+-export([binop/2, intdiv/2, exp_proc/2, not_proc/2, and_proc/2, or_proc/2,
+         cons_proc/2, car_proc/2, cdr_proc/2, worker_proc/2, check_expect/2,
+         save_state/2, load_state/2, print_proc/2, compile_proc/2, env_proc/2,
+         class_proc/2, remove_prims/1, bif/1]).
 
 
 basis() ->
@@ -13,12 +12,10 @@ basis() ->
                         {_, NewEnv} = eval:evalexp(Cur, Env),
                         NewEnv
                 end, [
-                      {'rat', {prim, fun basis:rat_proc/2}},
-                      {'+', basis:bif(basis:binop(fun erlang:'+'/2, int))},
-                      {'+r', basis:bif(fun plusrat_proc/2)},
-                      {'-', basis:bif(basis:binop(fun erlang:'-'/2, int))},
-                      {'*', basis:bif(basis:binop(fun erlang:'*'/2, int))},
-                      {'/', basis:bif(basis:binop(fun basis:intdiv/2, int))},
+                      {'+2', basis:bif(basis:binop(fun erlang:'+'/2, int))},
+                      {'-2', basis:bif(basis:binop(fun erlang:'-'/2, int))},
+                      {'*2', basis:bif(basis:binop(fun erlang:'*'/2, int))},
+                      {'/2', basis:bif(basis:binop(fun basis:intdiv/2, int))},
                       {'=', basis:bif(basis:binop(fun erlang:'=:='/2, bool))},
                       {'exp', basis:bif(fun basis:exp_proc/2)},
                       {'<', basis:bif(basis:binop(fun erlang:'<'/2, bool))},
@@ -29,16 +26,16 @@ basis() ->
                       {'cons', basis:bif(fun basis:cons_proc/2)},
                       {'car', basis:bif(fun basis:car_proc/2)},
                       {'cdr', basis:bif(fun basis:cdr_proc/2)},
-                      {'workers', {list, [{sym, node()}]}},
                       {'worker', basis:bif(fun basis:worker_proc/2)},
                       {'check-expect', {prim, fun basis:check_expect/2}},
-                      {'save-state', {prim, fun basis:save_state/2}},
-                      {'load-state', {prim, fun basis:load_state/2}},
+                      {'save-state', basis:bif(fun basis:save_state/2)},
+                      {'load-state', basis:bif(fun basis:load_state/2)},
                       {'print', basis:bif(fun basis:print_proc/2)},
-                      {'c', {prim, fun basis:compile_proc/2}},
-                      {'env', {prim, fun basis:env_proc/2}},
-                      {'ok', {sym, ok}},
-                      {'class', {prim, fun basis:class_proc/2}}
+                      {'c', basis:bif(fun basis:compile_proc/2)},
+                      {'env', basis:bif(fun basis:env_proc/2)},
+                      {'class', {prim, fun basis:class_proc/2}},
+                      {'workers', {list, [{sym, node()}]}},
+                      {'ok', {sym, ok}}
                      ],
                 Defs).
 
@@ -59,23 +56,7 @@ bif(F) ->
     end}.
 
 
-rat_proc([N, D], Env) -> {{rat, N, D}, Env}.
-
-
-gcd(A, 0) -> A;
-gcd(A, B) -> basis:gcd(B, A rem B).
-
-
 intdiv(A, B) -> trunc(A/B).
-
-
-simplify(N, D) ->
-    Gcd = basis:gcd(N, D),
-    {rat, {int, basis:intdiv(N, Gcd)}, {int, basis:intdiv(D, Gcd)}}.
-
-
-plusrat_proc([{rat, {int, AN}, {int, AD}}, {rat, {int, BN}, {int, BD}}], Env) ->
-    {simplify(AN*BD+AD*BN, AD*BD), Env}.
 
 
 exp_proc([{int, AV}, {int, BV}], Env) -> {{int, round(math:pow(AV, BV))}, Env}.
@@ -137,31 +118,28 @@ remove_prims(O) ->
     O.
 
 
-save_state([FileName], Env) ->
-    {{sym, FileNameVal}, _} = eval:evalexp(FileName, Env),
+save_state([{sym, FileName}], Env) ->
     EnvNoPrims = basis:remove_prims(Env),
-    ok = file:write_file(atom_to_list(FileNameVal),
+    ok = file:write_file(atom_to_list(FileName),
                          io_lib:fwrite("~p.\n", [EnvNoPrims])),
     {{bool, true}, Env}.
 
 
-load_state([FileName], Env) ->
-    {{sym, FileNameVal}, _} = eval:evalexp(FileName, Env),
-    {ok, [NewEnv]} = file:consult(atom_to_list(FileNameVal)),
+load_state([{sym, FileName}], Env) ->
+    {ok, [NewEnv]} = file:consult(atom_to_list(FileName)),
     {{bool, true}, eval:extend(NewEnv, Env, slim)}.
 
 
-print_proc([Exp], Env) -> {Val, _} = eval:evalexp(Exp, Env),
-                          eval:printexp(Val),
+print_proc([Val], Env) -> eval:printexp(Val),
                           io:format("~n"),
                           {{sym, ok}, Env}.
 
 
-compile_proc([Name], Env) -> {{sym, NameVal}, _} = eval:evalexp(Name, Env),
-                             code:purge(NameVal),
-                             {ok, NameVal} = compile:file(NameVal),
-                             code:load_file(NameVal),
-                             throw(code_reload).
+compile_proc([{sym, Name}], _Env) ->
+    code:purge(Name),
+    {ok, Name} = compile:file(Name),
+    code:load_file(Name),
+    throw(code_reload).
 
 
 env_proc([], Env) ->
