@@ -91,3 +91,4 @@
     (fold f (f (car xs) acc) (cdr xs))))
 
 (define quit () 'quit)
+(val q quit)

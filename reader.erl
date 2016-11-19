@@ -1,5 +1,5 @@
 -module(reader).
--export([repl/2, read_program/2]).
+-export([repl/2, repl/3, read_program/2]).
 
 read_program(string, Data) ->
     {ok, T, _} = scanner:string(Data),
@@ -45,7 +45,7 @@ eval_input(Env) ->
              eval:evalexp(Prog, Env)
     end.
 
--define(NEXT, repl(Num+1, Env)).
+-define(NEXT, reader:repl(Num+1, Env)).
 
 repl(Num, Env) -> repl(Num, Env, true).
 repl(Num, Env, ShouldPrint) ->
@@ -55,20 +55,20 @@ repl(Num, Env, ShouldPrint) ->
     end,
     try eval_input(Env) of
         {Val, NewEnv} ->  if Val == {sym, ok} ->
-                                 repl(Num+1, eval:bind(it, Val, NewEnv));
+                                 reader:repl(Num+1, eval:bind(it, Val, NewEnv));
                              Val == {sym, quit} ->
                                  io:format("Thank you for trying DLisp.~n");
                              true ->
                                  eval:printexp(Val),
                                  io:format("~n"),
-                                 repl(Num+1, eval:bind(it, Val, NewEnv))
+                                 reader:repl(Num+1, eval:bind(it, Val, NewEnv))
                           end
     catch
         throw:code_reload ->
             io:format("WARNING: Code reloaded~n"),
-            repl(Num+1, eval:bind(it, {sym, ok}, Env));
+            reader:repl(Num+1, eval:bind(it, {sym, ok}, Env));
         throw:nothing ->
-            repl(Num, Env, false);
+            reader:repl(Num, Env, false);
         error:{unbound_variable,V} ->
             io:format("ERROR: Unbound variable ~p~n", [V]),
             ?NEXT;
