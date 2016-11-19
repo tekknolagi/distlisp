@@ -92,3 +92,18 @@
 
 (define quit () 'quit)
 (val q quit)
+
+(val empty-alist '())
+
+(define find (alist key fail succ)
+  (if (null? alist)
+    (fail)
+    (if (= (car alist) key)
+      (succ (cadr alist))
+      (find (cdr alist) key fail succ))))
+
+(define bind (alist key val)
+  (cons (list2 key val) alist))
+
+(define isbound (alist key)
+  (find alist key (lambda () #f) (lambda (x) #t)))
