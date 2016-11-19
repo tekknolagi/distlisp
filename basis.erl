@@ -31,6 +31,7 @@ basis() ->
                  {'load-state', {prim, fun load_state/2}},
                  {'print', {prim, fun print_proc/2}},
                  {'c', {prim, fun compile_proc/2}},
+                 {'env', {prim, fun env_proc/2}},
                  {'ok', {sym, ok}}
                 ],
                 Defs).
@@ -141,3 +142,10 @@ compile_proc([Name], Env) -> {{sym, NameVal}, _} = eval:evalexp(Name, Env),
                              {ok, NameVal} = compile:file(NameVal),
                              code:load_file(NameVal),
                              throw(code_reload).
+
+env_proc([], Env) ->
+    EnvNoPrims = remove_prims(Env),
+    EnvWithSyms = lists:map(fun ({Name, V}) ->
+                                    {list, [{sym, Name}, V]}
+                            end, EnvNoPrims),
+    {{list, EnvWithSyms}, Env}.

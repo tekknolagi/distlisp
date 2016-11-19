@@ -61,6 +61,8 @@ printexp({list, L}) ->
     io:format("("),
     printlist(L),
     io:format(")");
+printexp({prim, _}) ->
+    io:format("<prim>");
 printexp({closure, _, _, _}) ->
     io:format("<closure>");
 printexp([]) -> io:format("");
