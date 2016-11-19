@@ -127,7 +127,7 @@ save_state([FileName], Env) ->
 load_state([FileName], Env) ->
     {{sym, FileNameVal}, _} = eval:evalexp(FileName, Env),
     {ok, [NewEnv]} = file:consult(atom_to_list(FileNameVal)),
-    {{bool, true}, NewEnv ++ Env}.
+    {{bool, true}, eval:extend(NewEnv, Env, slim)}.
 
 
 print_proc([Exp], Env) -> {Val, _} = eval:evalexp(Exp, Env),

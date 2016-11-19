@@ -1,7 +1,7 @@
 -module(eval).
 -export([evalexp/2]).
 -export([run/1]).
--export([lookup/2, bind/3, extend/2]).
+-export([lookup/2, bind/3, extend/2, extend/3]).
 -export([printexp/1]).
 
 -export([name_free/2]).
@@ -23,11 +23,22 @@ lookup(Name, [{Name, V}|_T]) -> V;
 lookup(Name, [{_K, _V}|T]) -> lookup(Name, T).
 
 
+% Simple bind.
 bind(Name, Val, Env) -> [{Name, Val}|Env].
+
+
+remove(_Name, []) -> [];
+remove(Name, [{Name, _}|T]) -> remove(Name, T);
+remove(Name, [H|T]) -> [H|remove(Name, T)].
+
+
+% Bind but removes duplicates.
+slimbind(Name, Val, Env) -> [{Name, Val}|remove(Name, Env)].
 
 
 extend([], Env) -> Env;
 extend([{Name, Val}|T], Env) -> bind(Name, Val, extend(T, Env)).
+extend([{Name, Val}|T], Env, slim) -> slimbind(Name, Val, extend(T, Env)).
 
 
 printlist([]) -> ok;

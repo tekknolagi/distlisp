@@ -80,8 +80,8 @@ repl(Num, Env, ShouldPrint) ->
             ?NEXT;
         error:{tuplezip_mismatch, _, _} ->
             io:format("ERROR: Wrong number of arguments~n"),
-            ?NEXT;
-        error:E ->
-            io:format("UNKNOWN ERROR: ~p~n", [E]),
-            ?NEXT
+            ?NEXT %;
+        %error:E ->
+        %    io:format("UNKNOWN ERROR: ~p~n", [E]),
+        %    ?NEXT
     end.
