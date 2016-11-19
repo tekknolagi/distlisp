@@ -19,7 +19,7 @@ read_term(Buf, BraceStack) ->
         C when (C == $\n) or (C == $\r) ->
             case BraceStack of
                 [] -> lists:reverse(Buf);
-                _ -> io:format("? "),
+                _ -> io:format("?? "),
                      read_term(Buf, BraceStack)
             end;
         $( ->
@@ -45,6 +45,8 @@ eval_input(Env) ->
              eval:evalexp(Prog, Env)
     end.
 
+-define(NEXT, repl(Num+1, Env)).
+
 repl(Num, Env) -> repl(Num, Env, true).
 repl(Num, Env, ShouldPrint) ->
     case ShouldPrint of
@@ -69,17 +71,17 @@ repl(Num, Env, ShouldPrint) ->
             repl(Num, Env, false);
         error:{unbound_variable,V} ->
             io:format("ERROR: Unbound variable ~p~n", [V]),
-            repl(Num+1, Env);
+            ?NEXT;
         error:{badmatch, G} ->
             io:format("ERROR: Type mismatch: ~p~n", [G]),
-            repl(Num+1, Env);
+            ?NEXT;
         error:{syntax_error, Reason} ->
             io:format("ERROR: ~p~n", [Reason]),
-            repl(Num+1, Env);
+            ?NEXT;
         error:{tuplezip_mismatch, _, _} ->
             io:format("ERROR: Wrong number of arguments~n"),
-            repl(Num+1, Env);
+            ?NEXT;
         error:E ->
             io:format("UNKNOWN ERROR: ~p~n", [E]),
-            repl(Num+1, Env)
+            ?NEXT
     end.

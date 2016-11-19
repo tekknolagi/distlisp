@@ -89,3 +89,5 @@
   (if (null? xs)
     acc
     (fold f (f (car xs) acc) (cdr xs))))
+
+(define quit () 'quit)
