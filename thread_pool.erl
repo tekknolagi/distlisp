@@ -53,7 +53,8 @@ loop(Master, ProcessMgr, ThreadPool) ->
         {ChosenWorker, NewPool} = thread_pool:next_node(ThreadPool),
         ChosenWorker ! WorkPack,
         loop(Master, ProcessMgr, NewPool);
-    check_who_died -> ProcessMgr ! {which_died, queue:to_list(ThreadPool)}
+    check_who_died -> ProcessMgr ! {which_died, queue:to_list(ThreadPool)};
+    {dead_procs, List} -> Master ! {dead, self(), lists:length(List)}
   end.
 
 
