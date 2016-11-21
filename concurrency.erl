@@ -63,8 +63,8 @@ test_sort() ->
     StartTime = curtime(),
     MergeSorted = concurrency:merge_sort(TestLs),
     EndTime = curtime(),
-    io:format("merge sort took  ~p~n", [EndTime-StartTime]),
+    io:format("merge sort took  ~B~n", [EndTime-StartTime]),
     SystemSorted = lists:sort(TestLs),
     EndSystemTime = curtime(),
-    io:format("system sort took ~p~n", [EndSystemTime-EndTime]),
+    io:format("system sort took ~B~n", [EndSystemTime-EndTime]),
     SystemSorted == MergeSorted.
