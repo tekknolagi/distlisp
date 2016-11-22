@@ -1,6 +1,6 @@
 -module(thread_pool).
 -export([create/1, create/2, next_node/1, add/1, add/2]).
--export([waitforwork/0]).
+-export([waitforwork/0, init_machine/1, loop/4]).
 
 
 
@@ -40,35 +40,78 @@ calculate () ->
    (Total - Alloc) * Cores div 1024.
 
 
+list_delete([], _) -> [];
+list_delete([HA|TA], [H|T]) -> list_delete(lists:delete(H, [HA|TA]), T);
+list_delete([HA|TA], K) -> lists:delete(K, [HA|TA]);
+list_delete(_, _) -> error.
+
+key_delete([], _) -> []
+key_delete([Pair | Ps], [Pid|T]) ->
+   key_delete(lists:keydelete(Pid,1, [Pair|Ps]) , T);
+key_delete([Pair | Ps], []) -> [Pair | Ps];
+key_delete(_, _) -> error.
+
+
+reap(ThreadPool, Pairs, DeadPids) ->
+   {list_delete(ThreadPool, DeadPids), key_delete(Pairs, DeadPids)}.
+ 
 
 init_machine (Master) ->
   ThreadPool = create(calculate()),
-  workerinfo(Master, queue:len(ThreadPool)),
+  machineinfo(Master, queue:len(ThreadPool)),
   ProcessMgr = spawn(process_manager, loop, [self()]),
-  loop(Master, ProcessMgr, ThreadPool).
+  loop(Master, ProcessMgr, ThreadPool, []).
 
-loop(Master, ProcessMgr, ThreadPool) ->
+loop(Master, ProcessMgr, ThreadPool, Pairs) ->
   receive
-    {delegate, WorkPack} ->
+    {delegate, {work, Sender, Id, {Exp, Env}} ->
         {ChosenWorker, NewPool} = thread_pool:next_node(ThreadPool),
-        ChosenWorker ! WorkPack,
-        loop(Master, ProcessMgr, NewPool);
-    check_who_died -> ProcessMgr ! {which_died, queue:to_list(ThreadPool)};
-    {dead_procs, List} -> Master ! {dead, self(), lists:length(List)}
+        ChosenWorker ! {work, Sender, Id, {Exp, Env}},
+        loop(Master, ProcessMgr, NewPool, [{ChosenWorker, Id}|Pairs]);
+
+    check_who_died ->
+        ProcessMgr ! {which_died, queue:to_list(ThreadPool)},
+        loop(Master, ProcessMgr, ThreadPool, Pairs);
+
+    {dead_procs, DeadIds, DeadPids} ->
+        Master ! {dead, self(), DeadIds},
+        {NewPool, NewPairs} = reap(ThreadPool, Pairs, DeadPids),
+        loop(Master, ProcessMgr, NewPool, NewPairs);
+
+    system_check ->
+        machineinfo(Master, queue:len(ThreadPool)),
+        loop(Master, ProcessMgr, ThreadPool, Pairs);
   end.
+
 
 
 
 waitforwork() ->
     receive
-        {work, Sender, Id, {Exp, Env} } -> Sender ! {result, eval:evalexp(Exp,Env)}
+        {work, Sender, Id, {Exp, Env} } -> Sender ! {result, Id, eval:evalexp(Exp,Env)}
     end,
     waitforwork().
 
-workerinfo (Master, NumWorkers) ->
-   Master ! {self(), NumWorkers,
+machineinfo (Master, NumWorkers) ->
+   Master ! {{self(), NumWorkers,
              erlang:system_info(logical_processors_available),
              memsup:get_memory_data()}.
 
+% Various ways to calculate init number of processes
 
- 
+ % Master
+ %      Waits for 
+ %      Sends Init machine to machines after
+ %      Periodically keeps track of machine health
+ %              Available memory
+ %              num processors
+ %              how much computation power is being used
+ %              Number of idle processes
+ %              Dead processes - how to handle?
+ %      Various implementations of parallel map
+ %              Round robin (already there)
+ %              Weighted round robin
+ %              Hashing
+ %              Most idle processes
+ %      Can tell the machine to spin up more processes
+ %      
