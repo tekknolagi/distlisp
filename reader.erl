@@ -46,6 +46,10 @@ eval_input(Env) ->
     end.
 
 -define(NEXT, reader:repl(Num+1, Env)).
+-define(NEXTWITHIT, reader:repl(Num+1, eval:bind(it, Val, NewEnv))).
+
+goodbye() -> io:format("Thank you for trying DLisp.~n"),
+             halt(0).
 
 repl(Num, Env) -> repl(Num, Env, true).
 repl(Num, Env, ShouldPrint) ->
@@ -54,21 +58,22 @@ repl(Num, Env, ShouldPrint) ->
         false -> ok
     end,
     try eval_input(Env) of
-        {Val, NewEnv} ->  if Val == {sym, ok} ->
-                                 reader:repl(Num+1, eval:bind(it, Val, NewEnv));
-                             Val == {sym, quit} ->
-                                 io:format("Thank you for trying DLisp.~n");
-                             true ->
-                                 eval:printexp(Val),
-                                 io:format("~n"),
-                                 reader:repl(Num+1, eval:bind(it, Val, NewEnv))
-                          end
+        {{sym, quit}, _} ->
+            goodbye();
+        {Val, NewEnv} when Val =:= {sym, ok} ->
+            ?NEXTWITHIT;
+        {Val, NewEnv} ->
+            eval:printexp(Val),
+            io:format(" : ~p~n", [eval:type(Val)]),
+            ?NEXTWITHIT
     catch
         throw:code_reload ->
             io:format("WARNING: Code reloaded~n"),
             reader:repl(Num+1, eval:bind(it, {sym, ok}, Env));
         throw:nothing ->
             reader:repl(Num, Env, false);
+        throw:eof ->
+            goodbye();
         error:{unbound_variable,V} ->
             io:format("ERROR: Unbound variable ~p~n", [V]),
             ?NEXT;

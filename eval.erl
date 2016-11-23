@@ -2,6 +2,7 @@
 -export([evalexp/2]).
 -export([lookup/2, bind/3, extend/2, extend/3]).
 -export([printexp/1]).
+-export([type/1]).
 
 -export([name_free/2]).
 
@@ -70,6 +71,9 @@ printexp([H|T]) ->
     printexp(H),
     io:format("~n"),
     printexp(T).
+
+
+type({T, _}) -> T.
 
 
 tuplezip([], []) -> [];
