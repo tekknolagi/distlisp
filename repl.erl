@@ -1,9 +1,5 @@
-#!/usr/bin/env escript
-%% -*- erlang -*-
-main([]) ->
-    reader:repl(1, basis:basis());
-main(_) -> usage().
+-module(repl).
+-export([main/0]).
 
-usage() ->
-    io:format("usage: ./repl\n"),
-    halt(1).
+main() ->
+    reader:repl(1, basis:basis()).
