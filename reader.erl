@@ -10,8 +10,9 @@ read_program(file, FileName) ->
     {ok, Data} = file:read_file(FileName),
     read_program(string, binary:bin_to_list(Data)).
 
-getchar() -> [C] = io:get_chars("", 1),
-             C.
+getchar(eof) -> throw(eof);
+getchar([C]) -> C.
+getchar() -> getchar(io:get_chars("", 1)).
 
 read_term(Buf, BraceStack) ->
     C = getchar(),
