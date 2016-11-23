@@ -20,9 +20,12 @@
 
 (define + (...) (fold +2 0 ...))
 (define * (...) (fold *2 1 ...))
-(define * (...) (fold *2 1 ...))
 (val / /2)
-(val - -2)
+(define cadr (ls) (car (cdr ls)))
+(define - (...)
+  (if (null? (cdr ...))
+    (-2 0 (car ...))
+    (-2 (car ...) (cadr ...))))
 (define fac (n) (apply * (range 1 (+ n 1))))
 
 (define filter (p? xs)
