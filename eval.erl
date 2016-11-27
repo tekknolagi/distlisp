@@ -167,8 +167,8 @@ evalexp({list, [?VAL, {sym, Name}, Exp]}, Env) ->
     {Val, bind(Name, Val, Env)};
 
 evalexp({list, [{closure, ['...'], Body, CapturedEnv}|Actuals]}, Env) ->
-    ActualValues = evalexps(Actuals, Env),
-    CombinedEnv = bind('...', {list, ActualValues}, extend(CapturedEnv, Env)),
+    ActualValues = {list, evalexps(Actuals, Env)},
+    CombinedEnv = bind('...', ActualValues, extend(CapturedEnv, Env)),
     evalexp(Body, CombinedEnv);
 
 evalexp({list, [{closure, Formals, Body, CapturedEnv}|Actuals]}, Env) ->
