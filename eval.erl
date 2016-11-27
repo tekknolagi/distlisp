@@ -152,6 +152,15 @@ evalexp({list, [?LET, {list, Bindings}, Body]}, Env) ->
 
 evalexp({list, [?QUOTE, QuotedExp]}, Env) -> {QuotedExp, Env};
 
+evalexp({list, [{sym,'begin'}, []]}, Env) ->
+    {{sym, ok}, Env};
+evalexp({list, [{sym,'begin'}, Exps]}, Env) ->
+    Vals = lists:map(fun (E) ->
+                             {V, _} = eval:evalexp(E, Env),
+                             V
+                     end, Exps),
+    {lists:last(Vals), Env};
+
 evalexp({list, [?DEFINE, {sym, Name}, Formals, Body]}, Env) ->
     {Closure, _} = evalexp({list, [?LAMBDA, Formals, Body]}, Env),
     {Closure, bind(Name, Closure, Env)};

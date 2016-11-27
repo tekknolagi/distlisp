@@ -13,14 +13,14 @@ basis() ->
                         {_, NewEnv} = eval:evalexp(Cur, Env),
                         NewEnv
                 end, [
-                      {'bin+', basis:bif(basis:binop(fun erlang:'+'/2, int))},
-                      {'bin-', basis:bif(basis:binop(fun erlang:'-'/2, int))},
-                      {'bin*', basis:bif(basis:binop(fun erlang:'*'/2, int))},
-                      {'bin/', basis:bif(basis:binop(fun basis:intdiv/2, int))},
-                      {'=', basis:bif(basis:binop(fun erlang:'=:='/2, bool))},
+                      {'binplus', basis:bif(basis:binop(fun erlang:'+'/2, int))},
+                      {'binminus', basis:bif(basis:binop(fun erlang:'-'/2, int))},
+                      {'bintimes', basis:bif(basis:binop(fun erlang:'*'/2, int))},
+                      {'bindiv', basis:bif(basis:binop(fun basis:intdiv/2, int))},
+                      {'bineq', basis:bif(basis:binop(fun erlang:'=:='/2, bool))},
                       {'exp', basis:bif(fun basis:exp_proc/2)},
-                      {'<', basis:bif(basis:binop(fun erlang:'<'/2, bool))},
-                      {'>', basis:bif(basis:binop(fun erlang:'>'/2, bool))},
+                      {'binlt', basis:bif(basis:binop(fun erlang:'<'/2, bool))},
+                      {'bingt', basis:bif(basis:binop(fun erlang:'>'/2, bool))},
                       {'not', basis:bif(fun basis:not_proc/2)},
                       {'and', {prim, fun basis:and_proc/2}},
                       {'or', {prim, fun basis:or_proc/2}},
@@ -28,9 +28,9 @@ basis() ->
                       {'car', basis:bif(fun basis:car_proc/2)},
                       {'cdr', basis:bif(fun basis:cdr_proc/2)},
                       {'worker', basis:bif(fun basis:worker_proc/2)},
-                      {'check-expect', {prim, fun basis:check_expect/2}},
-                      {'save-state', basis:bif(fun basis:save_state/2)},
-                      {'load-state', basis:bif(fun basis:load_state/2)},
+                      {'check_expect', {prim, fun basis:check_expect/2}},
+                      {'save_state', basis:bif(fun basis:save_state/2)},
+                      {'load_state', basis:bif(fun basis:load_state/2)},
                       {'print', basis:bif(fun basis:print_proc/2)},
                       {'c', basis:bif(fun basis:compile_proc/2)},
                       {'env', basis:bif(fun basis:env_proc/2)},
@@ -96,7 +96,7 @@ worker_proc([NodeName], Env) ->
 
 
 check_expect([A, B], Env) ->
-    {{bool, AreEq}, _} = eval:evalexp({list, [{sym, '='}, A, B]}, Env),
+    {{bool, AreEq}, _} = eval:evalexp({list, [{sym, 'bineq'}, A, B]}, Env),
     if
         AreEq -> %%io:format("check-expect passed~n", []),
             {{bool, true}, Env};

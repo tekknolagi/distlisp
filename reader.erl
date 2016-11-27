@@ -14,29 +14,14 @@ getchar(eof) -> throw(eof);
 getchar([C]) -> C.
 getchar() -> getchar(io:get_chars("", 1)).
 
-read_term(Buf, BraceStack) ->
-    C = getchar(),
-    case C of
-        C when (C == $\n) or (C == $\r) ->
-            case BraceStack of
-                [] -> lists:reverse(Buf);
-                _ -> io:format("?? "),
-                     read_term(Buf, BraceStack)
-            end;
-        $( ->
-            read_term([C|Buf], [C|BraceStack]);
-        $) ->
-            case BraceStack of
-                [$(] -> lists:reverse([C|Buf]);
-                [$(|RestBraces] -> read_term([C|Buf], RestBraces);
-                _ -> erlang:error({syntax_error, mismatched_braces})
-            end;
-        _ ->
-            read_term([C|Buf], BraceStack)
+read_term() ->
+    case getchar() of
+        $; -> ";";
+        C -> [C|read_term()]
     end.
 
 eval_input(Env) ->
-    Text = read_term([], []),
+    Text = read_term(),
     % Strip all leading whitespace.
     RStripped = re:replace(Text, "^\\s+", "", [global,{return,list}]),
     case RStripped of
@@ -65,7 +50,8 @@ repl(Num, Env, ShouldPrint) ->
             ?NEXTWITHIT;
         {Val, NewEnv} ->
             eval:printexp(Val),
-            io:format(" : ~p~n", [eval:type(Val)]),
+            io:format("~n"),
+            %io:format(" : ~p~n", [eval:type(Val)]),
             ?NEXTWITHIT
     catch
         throw:code_reload ->

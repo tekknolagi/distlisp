@@ -1,33 +1,74 @@
-Nonterminals prog list exprs expr funcall arglist nonempty_arglist.
-Terminals quote sym int bool left right comma squareleft squareright.
+Nonterminals
+prog exp funcall explist arglist name list letexp bindlist binding math define.
+
+Terminals
+sym int bool ';' '=' '(' ')' ',' '[' ']' 'in' 'let' 'end' '*' '+' '/' '-' '>'
+'<' '==' 'and' 'or' 'not' '!' '\'' 'fun'.
+
 Rootsymbol prog.
 
-prog -> exprs : {prog,'$1'}.
-prog -> '$empty' : {prog, {sym, ok}}.
+Left 100 '+'.
+Left 100 '-'.
+Left 200 '*'.
+Left 200 '/'.
+Left 200 '<'.
+Left 200 '>'.
+Left 300 'and'.
+Left 300 'or'.
+Left 400 '=='.
+Unary 500 '!'.
+Unary 500 'not'.
 
-% funcall -> dollar sym left arglist right : cons(remtok('$2'), '$4').
-funcall -> sym left arglist right : cons(remtok('$1'), '$3').
+prog -> explist : {prog, '$1'}.
 
-nonempty_arglist -> expr : mklist(['$1']).
-nonempty_arglist -> expr comma nonempty_arglist : cons('$1', '$3').
+define ->
+    'fun' name '(' arglist ')' '=' exp : mklist([{sym,'define'}, '$2', mklist('$4'), '$7']).
+define ->
+    'fun' name '(' ')' '=' exp : mklist([{sym,'define'}, '$2', mklist([]), '$6']).
 
-arglist -> '$empty' : mklist([]).
-arglist -> nonempty_arglist : '$1'.
+funcall -> name '(' ')' : mklist(['$1']).
+funcall -> name '(' arglist ')': mklist(['$1'|'$3']).
 
-list -> squareleft squareright : mklist([]).
-list -> squareleft exprs squareright : mklist('$2').
+explist -> exp ';' : ['$1'].
+explist -> exp ';' explist : ['$1'|'$3'].
 
-exprs -> expr : ['$1'].
-exprs -> expr exprs : ['$1'|'$2'].
+arglist -> exp : ['$1'].
+arglist -> exp ',' arglist : ['$1'|'$3'].
 
-expr -> sym : remtok('$1').
-expr -> bool : remtok('$1').
-expr -> int : remtok('$1').
-expr -> list : '$1'.
-expr -> funcall : '$1'.
-expr -> quote expr : mklist([{sym,quote}, '$2']).
+bindlist -> binding : ['$1'].
+bindlist -> binding ',' bindlist : ['$1'|'$3'].
+
+letexp -> 'let' bindlist 'in' exp 'end' : mklist([{sym,'let'}, mklist('$2'), '$4']).
+
+binding -> name '=' exp : {list, ['$1', '$3']}.
+
+list -> '[' ']' : {list, []}.
+list -> '[' arglist ']' : {list, '$2'}.
+
+name -> sym : remtok('$1').
+
+math -> exp '*' exp : mklist([{sym, 'bintimes'}, '$1', '$3']).
+math -> exp '+' exp : mklist([{sym, 'binplus'}, '$1', '$3']).
+math -> exp '/' exp : mklist([{sym, 'bindiv'}, '$1', '$3']).
+math -> exp '-' exp : mklist([{sym, 'binminus'}, '$1', '$3']).
+math -> exp '>' exp : mklist([{sym, 'bingt'}, '$1', '$3']).
+math -> exp '<' exp : mklist([{sym, 'binlt'}, '$1', '$3']).
+math -> exp '==' exp : mklist([{sym, 'bineq'}, '$1', '$3']).
+math -> exp 'or' exp : mklist([{sym, 'or'}, '$1', '$3']).
+math -> exp 'and' exp : mklist([{sym, 'and'}, '$1', '$3']).
+math -> '!' exp : mklist([{sym, 'not'}, '$2']).
+math -> 'not' exp : mklist([{sym, 'not'}, '$2']).
+
+exp -> name : '$1'.
+exp -> bool : remtok('$1').
+exp -> int : remtok('$1').
+exp -> list : mklist([{sym,quote}, '$1']).
+exp -> funcall : '$1'.
+exp -> letexp : '$1'.
+exp -> math : '$1'.
+exp -> define : '$1'.
+exp -> '\'' exp : mklist([{sym,quote}, '$2']).
 
 Erlang code.
 mklist(Ls) -> {list, Ls}.
 remtok({T, _L, V}) -> {T, V}.
-cons(E, {list, Es}) -> {list, [E|Es]}.
