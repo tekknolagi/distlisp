@@ -6,7 +6,7 @@ WS  = ([\000-\s]|\-\-.*|[\t\n\s\r])
 
 Rules.
 
-(if|not|or|and|let|let\*|letrec|in|end|fun|else|then)      :
+(if|not|or|and|let|let\*|letrec|in|end|fun|fn|else|then)      :
 {token,{list_to_atom(TokenChars),TokenLine}}.
 (not|or|and|>=|<=|[*\-+/><=!]|==) : {token,{list_to_atom(TokenChars),TokenLine}}.
 [\(\)\[\]\',\;]     : {token,{list_to_atom(TokenChars),TokenLine}}.

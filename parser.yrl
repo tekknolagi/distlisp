@@ -1,11 +1,11 @@
 Nonterminals
 prog exp funcall explist arglist name list letexp bindlist binding math define
-letkind.
+letkind lambda.
 
 Terminals
 sym int bool ';' '=' '(' ')' ',' '[' ']' 'in' 'let' 'let*' 'letrec' 'end' '*'
 '+' '/' '-' '>' '<' '<=' '>=' '==' 'and' 'or' 'not' '!' '\'' 'fun' 'if' 'then'
-'else'.
+'else' 'fn'.
 
 Rootsymbol prog.
 
@@ -69,6 +69,9 @@ math -> exp 'and' exp : mklist([{sym, 'and'}, '$1', '$3']).
 math -> '!' exp : mklist([{sym, 'not'}, '$2']).
 math -> 'not' exp : mklist([{sym, 'not'}, '$2']).
 
+lambda ->
+    'fn' '(' arglist ')' '=' exp : mklist([{sym, 'lambda'}, mklist('$3'), '$6']).
+
 exp -> name : '$1'.
 exp -> bool : remtok('$1').
 exp -> int : remtok('$1').
@@ -80,6 +83,7 @@ exp -> define : '$1'.
 exp -> 'if' exp 'then' exp 'else' exp : mklist([{sym,'if'},'$2','$4','$6']).
 exp -> '\'' exp : mklist([{sym,quote}, '$2']).
 exp -> '(' exp ')' : '$2'.
+exp -> lambda : '$1'.
 
 Erlang code.
 mklist(Ls) -> {list, Ls}.
