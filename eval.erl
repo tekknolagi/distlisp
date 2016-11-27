@@ -6,11 +6,11 @@
 
 -export([name_free/2]).
 
--define(IF,      {sym, 'if'}).
+-define(IF,      {sym, 'ifx'}).
 -define(LAMBDA,  {sym, 'lambda'}).
 -define(QUOTE,   {sym, 'quote'}).
--define(LET,     {sym, 'let'}).
--define(LETSTAR, {sym, 'let*'}).
+-define(LET,     {sym, 'letx'}).
+-define(LETSTAR, {sym, 'letx*'}).
 -define(DEFINE,  {sym, 'define'}).
 -define(VAL,     {sym, 'val'}).
 -define(MAP,     {sym, 'map'}).

@@ -55,10 +55,10 @@ fun mergesort(xs) =
   if null?(xs) or null?(cdr(xs))
   then xs
   else
-    let* size = length(xs),
-         half = size/2,
-         fsthalf = take(half, xs),
-         sndhalf = drop(half, xs)
+    let* val size = length(xs),
+         val half = size/2,
+         val fsthalf = take(half, xs),
+         val sndhalf = drop(half, xs)
     in
       merge(mergesort(fsthalf), mergesort(sndhalf))
     end;
@@ -71,7 +71,7 @@ fun o(f,g) = fn(x) = f(g(x));
 fun currytwo(f) = fn(x) = fn(y) = f(x,y);
 
 fun reverse(xs) =
-    let revapp = fn(ys,acc) =
+    let fun revapp(ys,acc) =
                if null?(ys)
                then acc
                else revapp(cdr(ys), cons(car(ys), acc))
