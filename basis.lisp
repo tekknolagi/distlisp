@@ -18,14 +18,14 @@
 
 (val foldl fold)
 
-(define + (...) (fold +2 0 ...))
-(define * (...) (fold *2 1 ...))
-(val / /2)
+(define + (...) (fold bin+ 0 ...))
+(define * (...) (fold bin* 1 ...))
+(val / bin/)
 (define cadr (ls) (car (cdr ls)))
 (define - (...)
   (if (null? (cdr ...))
-    (-2 0 (car ...))
-    (-2 (car ...) (cadr ...))))
+    (bin-  0 (car ...))
+    (bin- (car ...) (cadr ...))))
 (define fac (n) (apply * (range 1 (+ n 1))))
 
 (define filter (p? xs)

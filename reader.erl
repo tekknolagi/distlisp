@@ -3,7 +3,7 @@
 
 read_program(string, Data) ->
     {ok, T, _} = scanner:string(Data),
-    {ok, {form, Prog}} = parser:parse(T),
+    {ok, {prog, Prog}} = parser:parse(T),
     Prog;
 
 read_program(file, FileName) ->

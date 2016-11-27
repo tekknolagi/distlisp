@@ -7,15 +7,16 @@
 
 
 basis() ->
-    Defs = reader:read_program(file, "basis.lisp"),
+    % Defs = reader:read_program(file, "basis.dlisp"),
+    Defs = [],
     lists:foldl(fun (Cur, Env) ->
                         {_, NewEnv} = eval:evalexp(Cur, Env),
                         NewEnv
                 end, [
-                      {'+2', basis:bif(basis:binop(fun erlang:'+'/2, int))},
-                      {'-2', basis:bif(basis:binop(fun erlang:'-'/2, int))},
-                      {'*2', basis:bif(basis:binop(fun erlang:'*'/2, int))},
-                      {'/2', basis:bif(basis:binop(fun basis:intdiv/2, int))},
+                      {'bin+', basis:bif(basis:binop(fun erlang:'+'/2, int))},
+                      {'bin-', basis:bif(basis:binop(fun erlang:'-'/2, int))},
+                      {'bin*', basis:bif(basis:binop(fun erlang:'*'/2, int))},
+                      {'bin/', basis:bif(basis:binop(fun basis:intdiv/2, int))},
                       {'=', basis:bif(basis:binop(fun erlang:'=:='/2, bool))},
                       {'exp', basis:bif(fun basis:exp_proc/2)},
                       {'<', basis:bif(basis:binop(fun erlang:'<'/2, bool))},

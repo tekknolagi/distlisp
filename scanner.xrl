@@ -11,7 +11,10 @@ Rules.
 \#[tf]  : {token,{bool,TokenLine,list_to_bool(TokenChars)}}.
 [(]     : {token,{left,TokenLine}}.
 [)]     : {token,{right,TokenLine}}.
+[\[]    : {token,{squareleft,TokenLine}}.
+[\]]    : {token,{squareright,TokenLine}}.
 [\']    : {token,{quote,TokenLine}}.
+[,]     : {token,{comma,TokenLine}}.
 {WS}+   : skip_token.
 
 Erlang code.
