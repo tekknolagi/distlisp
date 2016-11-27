@@ -88,6 +88,7 @@ exp -> funcall : '$1'.
 exp -> letexp : '$1'.
 exp -> math : '$1'.
 exp -> define : '$1'.
+exp -> 'val' name '=' exp : mklist([{sym,'valx'},'$2','$4']).
 exp -> 'if' exp 'then' exp 'else' exp : mklist([{sym,'ifx'},'$2','$4','$6']).
 exp -> '(' exp ')' : '$2'.
 exp -> lambda : '$1'.

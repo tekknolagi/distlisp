@@ -12,7 +12,7 @@
 -define(LET,     {sym, 'letx'}).
 -define(LETSTAR, {sym, 'letx*'}).
 -define(DEFINE,  {sym, 'define'}).
--define(VAL,     {sym, 'val'}).
+-define(VAL,     {sym, 'valx'}).
 -define(MAP,     {sym, 'map'}).
 -define(EVAL,    {sym, 'eval'}).
 -define(APPLY,   {sym, 'apply'}).
@@ -61,7 +61,9 @@ printexp({list, L}) ->
     printlist(L),
     io:format(")");
 printexp({prim, _}) -> io:format("<prim>");
-printexp({closure, _, _, _}) -> io:format("<closure>");
+printexp({closure, Formals, Body, CapturedEnv}) ->
+    PrintableFormals = {list, lists:map(fun(Name) -> {sym,Name} end, Formals)},
+    printexp({list, [{sym, lambda}, PrintableFormals, Body]});
 printexp([]) -> io:format("");
 printexp([H|T]) ->
     printexp(H),
@@ -155,15 +157,6 @@ evalexp({list, [?LET, {list, Bindings}, Body]}, Env) ->
     evalexp(Body, NewEnv);
 
 evalexp({list, [?QUOTE, QuotedExp]}, Env) -> {QuotedExp, Env};
-
-evalexp({list, [{sym,'begin'}, []]}, Env) ->
-    {{sym, ok}, Env};
-evalexp({list, [{sym,'begin'}, Exps]}, Env) ->
-    Vals = lists:map(fun (E) ->
-                             {V, _} = eval:evalexp(E, Env),
-                             V
-                     end, Exps),
-    {lists:last(Vals), Env};
 
 evalexp({list, [?DEFINE, {sym, Name}, Formals, Body]}, Env) ->
     {Closure, _} = evalexp({list, [?LAMBDA, Formals, Body]}, Env),
