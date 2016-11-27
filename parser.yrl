@@ -1,9 +1,11 @@
 Nonterminals
-prog exp funcall explist arglist name list letexp bindlist binding math define.
+prog exp funcall explist arglist name list letexp bindlist binding math define
+letkind.
 
 Terminals
-sym int bool ';' '=' '(' ')' ',' '[' ']' 'in' 'let' 'end' '*' '+' '/' '-' '>'
-'<' '==' 'and' 'or' 'not' '!' '\'' 'fun'.
+sym int bool ';' '=' '(' ')' ',' '[' ']' 'in' 'let' 'let*' 'letrec' 'end' '*'
+'+' '/' '-' '>' '<' '<=' '>=' '==' 'and' 'or' 'not' '!' '\'' 'fun' 'if' 'then'
+'else'.
 
 Rootsymbol prog.
 
@@ -11,10 +13,12 @@ Left 100 '+'.
 Left 100 '-'.
 Left 200 '*'.
 Left 200 '/'.
-Left 200 '<'.
-Left 200 '>'.
 Left 300 'and'.
 Left 300 'or'.
+Left 400 '<'.
+Left 400 '>'.
+Left 400 '>='.
+Left 400 '<='.
 Left 400 '=='.
 Unary 500 '!'.
 Unary 500 'not'.
@@ -38,7 +42,11 @@ arglist -> exp ',' arglist : ['$1'|'$3'].
 bindlist -> binding : ['$1'].
 bindlist -> binding ',' bindlist : ['$1'|'$3'].
 
-letexp -> 'let' bindlist 'in' exp 'end' : mklist([{sym,'let'}, mklist('$2'), '$4']).
+letkind -> 'let' : 'let'.
+letkind -> 'let*' : 'let*'.
+letkind -> 'letrec' : 'letrec'.
+
+letexp -> letkind bindlist 'in' exp 'end' : mklist([{sym,'$1'}, mklist('$2'), '$4']).
 
 binding -> name '=' exp : {list, ['$1', '$3']}.
 
@@ -53,6 +61,8 @@ math -> exp '/' exp : mklist([{sym, 'bindiv'}, '$1', '$3']).
 math -> exp '-' exp : mklist([{sym, 'binminus'}, '$1', '$3']).
 math -> exp '>' exp : mklist([{sym, 'bingt'}, '$1', '$3']).
 math -> exp '<' exp : mklist([{sym, 'binlt'}, '$1', '$3']).
+math -> exp '<=' exp : mklist([{sym, 'binlte'}, '$1', '$3']).
+math -> exp '>=' exp : mklist([{sym, 'bingte'}, '$1', '$3']).
 math -> exp '==' exp : mklist([{sym, 'bineq'}, '$1', '$3']).
 math -> exp 'or' exp : mklist([{sym, 'or'}, '$1', '$3']).
 math -> exp 'and' exp : mklist([{sym, 'and'}, '$1', '$3']).
@@ -67,7 +77,9 @@ exp -> funcall : '$1'.
 exp -> letexp : '$1'.
 exp -> math : '$1'.
 exp -> define : '$1'.
+exp -> 'if' exp 'then' exp 'else' exp : mklist([{sym,'if'},'$2','$4','$6']).
 exp -> '\'' exp : mklist([{sym,quote}, '$2']).
+exp -> '(' exp ')' : '$2'.
 
 Erlang code.
 mklist(Ls) -> {list, Ls}.

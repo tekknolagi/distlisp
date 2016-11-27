@@ -7,8 +7,7 @@
 
 
 basis() ->
-    % Defs = reader:read_program(file, "basis.dlisp"),
-    Defs = [],
+    Defs = reader:read_program(file, "basis.dlisp"),
     lists:foldl(fun (Cur, Env) ->
                         {_, NewEnv} = eval:evalexp(Cur, Env),
                         NewEnv
