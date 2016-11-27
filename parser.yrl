@@ -1,6 +1,6 @@
 Nonterminals
 prog exp funcall explist arglist name list letexp bindlist binding math define
-letkind lambda.
+letkind lambda lisplist.
 
 Terminals
 sym int bool ';' '=' '(' ')' ',' '[' ']' 'in' 'let' 'let*' 'letrec' 'end' '*'
@@ -51,7 +51,10 @@ letexp -> letkind bindlist 'in' exp 'end' : mklist([{sym,'$1'}, mklist('$2'), '$
 binding -> name '=' exp : {list, ['$1', '$3']}.
 
 list -> '[' ']' : {list, []}.
-list -> '[' arglist ']' : {list, '$2'}.
+list -> '[' lisplist ']' : {list, '$2'}.
+
+lisplist -> exp : ['$1'].
+lisplist -> exp lisplist : ['$1'|'$2'].
 
 name -> sym : remtok('$1').
 
@@ -75,7 +78,7 @@ lambda ->
 exp -> name : '$1'.
 exp -> bool : remtok('$1').
 exp -> int : remtok('$1').
-exp -> list : mklist([{sym,quote}, '$1']).
+exp -> list : '$1'.
 exp -> funcall : '$1'.
 exp -> letexp : '$1'.
 exp -> math : '$1'.

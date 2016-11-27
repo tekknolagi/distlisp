@@ -132,7 +132,11 @@ evalexp({int, Val}, Env) -> {{int, Val}, Env};
 
 evalexp({bool, Val}, Env) -> {{bool, Val}, Env};
 
+evalexp({sym, nil}, Env) -> {{list, []}, Env};
+
 evalexp({sym, Name}, Env) -> {lookup(Name, Env), Env};
+
+evalexp({list, []}, Env) -> {{list, []}, Env};
 
 evalexp({list, [?LETSTAR, {list, []}, Body]}, Env) ->
     evalexp(Body, Env);

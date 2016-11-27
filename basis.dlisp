@@ -1,7 +1,7 @@
-fun null?(xs) = xs == [];
+fun null?(xs) = xs == nil;
 
-check_expect(null?([]), #t);
-check_expect(null?([1,2,3]), #f);
+check_expect(null?(nil), #t);
+check_expect(null?('[1 2 3]), #f);
 
 fun bingte(a,b) = not(a < b);
 fun binlte(a,b) = not(a > b);
@@ -10,55 +10,58 @@ fun max(a,b) = if a > b then a else b;
 fun min(a,b) = if a < b then a else b;
 
 fun foldl(f, acc, xs) =
-    if null?(xs)
-    then acc
-    else foldl(f, f(car(xs), acc), cdr(xs));
+  if null?(xs)
+  then acc
+  else foldl(f, f(car(xs), acc), cdr(xs));
 
-fun cadr(xs) = car(cdr(xs));
+fun cadr(xs) = [car [cdr xs]];
 
 fun vartimes(...) = foldl(bintimes, 1, ...);
 fun fac(n) = apply(vartimes, range(1, n+1));
 
 fun range(start, fin) =
-    if start > fin or start == fin
-    then []
-    else cons(start, range(start+1, fin));
+  if start > fin or start == fin
+  then nil
+  else cons(start, range(start+1, fin));
 
 fun filter(p?, xs) =
-    if null?(xs)
-    then []
-    else if p?(car(xs))
-         then cons(car(xs), filter(p?, cdr(xs)))
-         else filter(p?, cdr(xs));
+  if null?(xs)
+  then nil
+  else
+    if p?(car(xs))
+    then cons(car(xs), filter(p?, cdr(xs)))
+    else filter(p?, cdr(xs));
 
 fun length(xs) =
-    if null?(xs) then 0 else 1+length(cdr(xs));
+  if null?(xs) then 0 else 1+length(cdr(xs));
 
 fun take(n, xs) =
-    if n<1 then [] else cons(car(xs), take(n-1, cdr(xs)));
+  if n<1 then nil else cons(car(xs), take(n-1, cdr(xs)));
 
 fun drop(n, xs) =
-    if n<1 then xs else drop(n-1, cdr(xs));
+  if n<1 then xs else drop(n-1, cdr(xs));
 
 fun merge(xs, ys) =
-    if null?(xs)
-    then ys
-    else if null?(ys)
-         then xs
-         else if car(xs) < car(ys)
-              then cons(car(xs), merge(cdr(xs), ys))
-              else cons(car(ys), merge(xs, cdr(ys)));
+  if null?(xs)
+  then ys
+  else if null?(ys)
+  then xs
+  else
+    if car(xs) < car(ys)
+    then cons(car(xs), merge(cdr(xs), ys))
+    else cons(car(ys), merge(xs, cdr(ys)));
 
 fun mergesort(xs) =
-    if null?(xs) or null?(cdr(xs))
-    then xs
-    else let* size = length(xs),
-              half = size/2,
-              fsthalf = take(half, xs),
-              sndhalf = drop(half, xs)
-         in
-             merge(mergesort(fsthalf), mergesort(sndhalf))
-         end;
+  if null?(xs) or null?(cdr(xs))
+  then xs
+  else
+    let* size = length(xs),
+         half = size/2,
+         fsthalf = take(half, xs),
+         sndhalf = drop(half, xs)
+    in
+      merge(mergesort(fsthalf), mergesort(sndhalf))
+    end;
 
 fun quit() = 'quit;
 fun q() = quit();
@@ -68,11 +71,12 @@ fun o(f,g) = fn(x) = f(g(x));
 fun currytwo(f) = fn(x) = fn(y) = f(x,y);
 
 fun reverse(xs) =
-    let revapp = fn(ys,acc) = if null?(ys)
-                              then acc
-                              else revapp(cdr(ys), cons(car(ys), acc))
+    let revapp = fn(ys,acc) =
+               if null?(ys)
+               then acc
+               else revapp(cdr(ys), cons(car(ys), acc))
     in
-        revapp(xs, [])
+         revapp(xs, nil)
     end;
 
-fun list(...) = reverse(foldl(cons, [], ...));
+fun list(...) = reverse(foldl(cons, nil, ...));
