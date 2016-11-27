@@ -62,3 +62,17 @@ fun mergesort(xs) =
 
 fun quit() = 'quit;
 fun q() = quit();
+
+fun o(f,g) = fn(x) = f(g(x));
+
+fun currytwo(f) = fn(x) = fn(y) = f(x,y);
+
+fun reverse(xs) =
+    let revapp = fn(ys,acc) = if null?(ys)
+                              then acc
+                              else revapp(cdr(ys), cons(car(ys), acc))
+    in
+        revapp(xs, [])
+    end;
+
+fun list(...) = reverse(foldl(cons, [], ...));
