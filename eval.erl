@@ -123,6 +123,11 @@ improve({Formals, Body}, Env) -> {{Formals, Body},
                                  end,
                                  Env)}.
 
+evalexps(Es, Env) ->
+    lists:map(fun (E) -> {Val, _} = evalexp(E, Env),
+                         Val
+              end, Es).
+
 evalexp({int, Val}, Env) -> {{int, Val}, Env};
 
 evalexp({bool, Val}, Env) -> {{bool, Val}, Env};
@@ -155,18 +160,13 @@ evalexp({list, [?VAL, {sym, Name}, Exp]}, Env) ->
     {Val, _} = evalexp(Exp, Env),
     {Val, bind(Name, Val, Env)};
 
-evalexp({list, [{closure, Formals, Body, CapturedEnv}|Actuals]}, Env)
-  when Formals =:= ['...'] ->
-    ActualValues = lists:map(fun (Actual) ->
-                                     {Val, _} = evalexp(Actual, Env), Val
-                             end, Actuals),
+evalexp({list, [{closure, ['...'], Body, CapturedEnv}|Actuals]}, Env) ->
+    ActualValues = evalexps(Actuals, Env),
     CombinedEnv = bind('...', {list, ActualValues}, extend(CapturedEnv, Env)),
     evalexp(Body, CombinedEnv);
 
 evalexp({list, [{closure, Formals, Body, CapturedEnv}|Actuals]}, Env) ->
-    ActualValues = lists:map(fun (Actual) ->
-                                     {Val, _} = evalexp(Actual, Env), Val
-                             end, Actuals),
+    ActualValues = evalexps(Actuals, Env),
     FormalsEnv = tuplezip(Formals, ActualValues),
     CombinedEnv = extend(FormalsEnv, extend(CapturedEnv, Env)),
     evalexp(Body, CombinedEnv);
@@ -187,8 +187,8 @@ evalexp({list, [?IF, Cond, E1, E2]}, Env) ->
 evalexp({list, [?MAP, Fn, Elements]}, Env) ->
     {{list, ElementsVal}, _} = evalexp(Elements, Env),
     {FnVal, _} = evalexp(Fn, Env),
-    %% Map = fun lists:map/2,
-    Map = fun concurrency:parallel_map/2,
+    Map = fun lists:map/2,
+    %% Map = fun concurrency:parallel_map/2,
     Results = Map(fun (Element) ->
                           {V1, _} = evalexp(Element, Env),
                           {V2, _} = evalexp({list, [FnVal, V1]}, Env),
