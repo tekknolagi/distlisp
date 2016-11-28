@@ -20,7 +20,7 @@ fun vartimes(...) = foldl(bintimes, 1, ...);
 fun fac(n) = apply(vartimes, range(1, n+1));
 
 fun range(start, fin) =
-  if start > fin or start == fin
+  if (start > fin) or (start == fin)
   then nil
   else cons(start, range(start+1, fin));
 

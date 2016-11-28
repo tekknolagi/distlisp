@@ -61,7 +61,7 @@ printexp({list, L}) ->
     printlist(L),
     io:format(")");
 printexp({prim, _}) -> io:format("<prim>");
-printexp({closure, Formals, Body, CapturedEnv}) ->
+printexp({closure, Formals, Body, _CapturedEnv}) ->
     PrintableFormals = {list, lists:map(fun(Name) -> {sym,Name} end, Formals)},
     printexp({list, [{sym, lambda}, PrintableFormals, Body]});
 printexp([]) -> io:format("");

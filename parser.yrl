@@ -1,28 +1,29 @@
 Nonterminals
-prog exp funcall explist arglist name list letexp bindlist binding math define
-letkind lambda lisplist.
+prog exp funcall explist arglist name list letexp bindlist binding opexp define
+letkind lambda lisplist opfn oper unaryoper quotable.
 
 Terminals
 sym int bool ';' '=' '(' ')' ',' '[' ']' 'in' 'let' 'let*' 'end' '*' '+' '/'
 '-' '>' '<' '<=' '>=' '==' 'and' 'or' 'not' '!' '\'' 'val' 'fun' 'if' 'then'
-'else' 'fn'.
+'else' 'fn' 'op'.
 
 Rootsymbol prog.
 
-Unary 050 '\''.
-Left 100 '+'.
-Left 100 '-'.
-Left 200 '*'.
-Left 200 '/'.
-Left 300 'and'.
-Left 300 'or'.
+% TODO: FIX OPERATOR PRECEDENCE
+% AS IN: 1 < 5 or 1 == 5
+Unary 100 '!'.
+Unary 100 'not'.
+Left 200 '+'.
+Left 200 '-'.
+Left 300 '*'.
+Left 300 '/'.
 Left 400 '<'.
 Left 400 '>'.
 Left 400 '>='.
 Left 400 '<='.
-Left 400 '=='.
-Unary 500 '!'.
-Unary 500 'not'.
+Left 500 '=='.
+Left 600 'and'.
+Left 600 'or'.
 
 prog -> explist : {prog, '$1'}.
 
@@ -62,23 +63,34 @@ lisplist -> exp lisplist : ['$1'|'$2'].
 
 name -> sym : remtok('$1').
 
-math -> exp '*' exp : mklist([{sym, 'bintimes'}, '$1', '$3']).
-math -> exp '+' exp : mklist([{sym, 'binplus'}, '$1', '$3']).
-math -> exp '/' exp : mklist([{sym, 'bindiv'}, '$1', '$3']).
-math -> exp '-' exp : mklist([{sym, 'binminus'}, '$1', '$3']).
-math -> exp '>' exp : mklist([{sym, 'bingt'}, '$1', '$3']).
-math -> exp '<' exp : mklist([{sym, 'binlt'}, '$1', '$3']).
-math -> exp '<=' exp : mklist([{sym, 'binlte'}, '$1', '$3']).
-math -> exp '>=' exp : mklist([{sym, 'bingte'}, '$1', '$3']).
-math -> exp '==' exp : mklist([{sym, 'bineq'}, '$1', '$3']).
-math -> exp 'or' exp : mklist([{sym, 'or'}, '$1', '$3']).
-math -> exp 'and' exp : mklist([{sym, 'and'}, '$1', '$3']).
-math -> '!' exp : mklist([{sym, 'not'}, '$2']).
-math -> 'not' exp : mklist([{sym, 'not'}, '$2']).
-math -> '\'' exp : mklist([{sym,quote}, '$2']).
+oper -> '*' : {sym,bintimes}.
+oper -> '+' : {sym,binplus}.
+oper -> '/' : {sym,bindiv}.
+oper -> '-' : {sym,binminus}.
+oper -> '>' : {sym,bingt}.
+oper -> '<' : {sym,binlt}.
+oper -> '<=' : {sym,binlte}.
+oper -> '>=' : {sym,bingte}.
+oper -> '==' : {sym,bineq}.
+oper -> 'or' : {sym,'or'}.
+oper -> 'and' : {sym,'and'}.
+
+unaryoper -> '!' : {sym,'not'}.
+unaryoper -> 'not' : {sym,'not'}.
+
+quotable -> name : '$1'.
+quotable -> bool : '$1'.
+quotable -> int : '$1'.
+quotable -> list : '$1'.
+
+opexp -> exp oper exp : mklist(['$2', '$1', '$3']).
+opexp -> unaryoper exp : mklist(['$1', '$2']).
+opexp -> '\'' quotable : mklist([{sym,quote},'$2']).
 
 lambda ->
     'fn' '(' arglist ')' '=' exp : mklist([{sym, 'lambda'}, mklist('$3'), '$6']).
+
+opfn -> 'op' oper : '$2'.
 
 exp -> name : '$1'.
 exp -> bool : remtok('$1').
@@ -86,8 +98,9 @@ exp -> int : remtok('$1').
 exp -> list : '$1'.
 exp -> funcall : '$1'.
 exp -> letexp : '$1'.
-exp -> math : '$1'.
+exp -> opexp : '$1'.
 exp -> define : '$1'.
+exp -> opfn : '$1'.
 exp -> 'val' name '=' exp : mklist([{sym,'valx'},'$2','$4']).
 exp -> 'if' exp 'then' exp 'else' exp : mklist([{sym,'ifx'},'$2','$4','$6']).
 exp -> '(' exp ')' : '$2'.
