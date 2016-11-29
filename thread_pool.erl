@@ -1,12 +1,13 @@
 -module(thread_pool).
 -export([create/1, create/2, next_node/1, add/1, add/2]).
--export([waitforwork/0, init_machine/1, loop/4]).
+-export([waitforwork/0, init_machine/1, loop/4, calculate/0, reap/3]).
 
 
+create(0, _ServerPool, t) -> queue:from_list([]);%erlang:error(invalid_num_node);
 
-create(0, _ServerPool, t) -> erlang:error(invalid_num_node);
-
-create(1, _ServerPool, t) -> queue:from_list([spawn(fun waitforwork/0)]);
+create(1, ServerPool, t) -> {NextServer, _NewPool} = next_node(ServerPool),
+                            Pid = spawn(NextServer, ?MODULE, waitforwork, []),
+                            queue:from_list([Pid]);
 
 create(NumNodes, ServerPool, t) when NumNodes > 1 ->
     {NextServer, NewPool} = next_node(ServerPool),
@@ -14,7 +15,7 @@ create(NumNodes, ServerPool, t) when NumNodes > 1 ->
     queue:in(Pid, create(NumNodes-1, NewPool, t)).
 
 create(NumNodes, ServerPool) ->
-    create(NumNodes, queue:from_list(ServerPool), t).
+    create(NumNodes, queue:from_list([node()|ServerPool]), t).
 
 create(NumNodes) ->
     create(NumNodes, []).
@@ -41,11 +42,12 @@ calculate () ->
 
 
 list_delete([], _) -> [];
+list_delete([HA|TA], []) -> [HA|TA];
 list_delete([HA|TA], [H|T]) -> list_delete(lists:delete(H, [HA|TA]), T);
 list_delete([HA|TA], K) -> lists:delete(K, [HA|TA]);
 list_delete(_, _) -> error.
 
-key_delete([], _) -> []
+key_delete([], _) -> [];
 key_delete([Pair | Ps], [Pid|T]) ->
    key_delete(lists:keydelete(Pid,1, [Pair|Ps]) , T);
 key_delete([Pair | Ps], []) -> [Pair | Ps];
@@ -57,30 +59,33 @@ reap(ThreadPool, Pairs, DeadPids) ->
  
 
 init_machine (Master) ->
-  ThreadPool = create(calculate()),
+  application:start(sasl),
+  application:start(os_mon),
+  ThreadPool = create(100),
   machineinfo(Master, queue:len(ThreadPool)),
   ProcessMgr = spawn(process_manager, loop, [self()]),
   loop(Master, ProcessMgr, ThreadPool, []).
 
 loop(Master, ProcessMgr, ThreadPool, Pairs) ->
   receive
-    {delegate, {work, Sender, Id, {Exp, Env}} ->
+    {delegate, {work, Master, Id, {Exp, Env}}} ->
         {ChosenWorker, NewPool} = thread_pool:next_node(ThreadPool),
-        ChosenWorker ! {work, Sender, Id, {Exp, Env}},
+        ChosenWorker ! {work, Master, Id, {Exp, Env}},
         loop(Master, ProcessMgr, NewPool, [{ChosenWorker, Id}|Pairs]);
 
     check_who_died ->
-        ProcessMgr ! {which_died, queue:to_list(ThreadPool)},
+        ProcessMgr ! {which_died, Pairs},
         loop(Master, ProcessMgr, ThreadPool, Pairs);
 
     {dead_procs, DeadIds, DeadPids} ->
         Master ! {dead, self(), DeadIds},
-        {NewPool, NewPairs} = reap(ThreadPool, Pairs, DeadPids),
-        loop(Master, ProcessMgr, NewPool, NewPairs);
+        {NewPool, NewPairs} = reap(queue:to_list(ThreadPool), Pairs, DeadPids),
+        loop(Master, ProcessMgr, queue:from_list(NewPool), NewPairs);
 
     system_check ->
-        machineinfo(Master, queue:len(ThreadPool)),
-        loop(Master, ProcessMgr, ThreadPool, Pairs);
+        NumWorkers = queue:len(ThreadPool),
+        machineinfo(Master, NumWorkers),
+        loop(Master, ProcessMgr, ThreadPool, Pairs)
   end.
 
 
@@ -93,7 +98,7 @@ waitforwork() ->
     waitforwork().
 
 machineinfo (Master, NumWorkers) ->
-   Master ! {{self(), NumWorkers,
+   Master ! {self(), NumWorkers,
              erlang:system_info(logical_processors_available),
              memsup:get_memory_data()}.
 
