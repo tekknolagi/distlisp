@@ -8,6 +8,7 @@ get_id({Pid, Id}) -> Id.
 
 get_pid({Pid, Id}) -> Pid.
 
+
 loop(MachineManager) ->
     io:format("DEBUG: Waiting to receive query.~n"),
     receive

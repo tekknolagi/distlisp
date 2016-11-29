@@ -3,10 +3,6 @@
 (check-expect (null? '()) #t)
 (check-expect (null? '(1 2 3)) #f)
 
-(define list1 (x) (cons x '()))
-
-(define list2 (x y) (cons x (list1 y)))
-
 (define >= (a b) (not (< a b)))
 
 (define > (a b) (and (not (= a b)) (not (< a b))))
@@ -24,9 +20,12 @@
 
 (define + (...) (fold +2 0 ...))
 (define * (...) (fold *2 1 ...))
-(define * (...) (fold *2 1 ...))
 (val / /2)
-(val - -2)
+(define cadr (ls) (car (cdr ls)))
+(define - (...)
+  (if (null? (cdr ...))
+    (-2 0 (car ...))
+    (-2 (car ...) (cadr ...))))
 (define fac (n) (apply * (range 1 (+ n 1))))
 
 (define filter (p? xs)
@@ -94,6 +93,14 @@
                     (revapp (cdr xs) (cons (car xs) acc))))))
     (revapp xs '())))
 
+(define list (...) (reverse (fold cons '() ...)))
+(val list1 list)
+(val list2 list)
+(val list3 list)
+(val list4 list)
+(val list5 list)
+(val list6 list)
+
 (define range (start end)
   (if (>= start end)
     '()
@@ -116,4 +123,3 @@
 
 (define isbound (alist key)
   (find alist key (lambda () #f) (lambda (x) #t)))
-

@@ -88,11 +88,10 @@ car_proc([{list, [H|_T]}], Env) -> {H, Env}.
 cdr_proc([{list, [_H|T]}], Env) -> {{list, T}, Env}.
 
 
-worker_proc([NodeExp], Env) -> {NodeName, _} = eval:evalexp(NodeExp, Env),
-                               {list, Workers} = eval:lookup(workers, Env),
-                               NewWorkers = {list, [NodeName|Workers]},
-                               {NewWorkers,
-                                eval:bind(workers, NewWorkers, Env)}.
+worker_proc([NodeName], Env) ->
+    {list, Workers} = eval:lookup(workers, Env),
+    NewWorkers = {list, [NodeName|Workers]},
+    {NewWorkers, eval:bind(workers, NewWorkers, Env)}.
 
 
 check_expect([A, B], Env) ->

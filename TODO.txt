@@ -1,0 +1,3 @@
+* Add simple type check (sym/int/list, etc)
+* Add full type check
+* Fix issue where 1\n2 == 12

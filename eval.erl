@@ -2,6 +2,7 @@
 -export([evalexp/2]).
 -export([lookup/2, bind/3, extend/2, extend/3]).
 -export([printexp/1]).
+-export([type/1]).
 
 -export([name_free/2]).
 
@@ -49,10 +50,6 @@ printlist([H|T]) ->
 
 
 printexp({int, Val}) -> io:format("~B", [Val]);
-printexp({rat, Num, Denom}) ->
-    printexp(Num),
-    io:format("/"),
-    printexp(Denom);
 printexp({sym, Val}) -> io:format("~s", [Val]);
 printexp({bool, true}) -> io:format("#t");
 printexp({bool, false}) -> io:format("#f");
@@ -72,6 +69,9 @@ printexp([H|T]) ->
     printexp(T).
 
 
+type({T, _}) -> T.
+
+
 tuplezip([], []) -> [];
 tuplezip([HA|TA], [HB|TB]) -> [{HA,HB}|tuplezip(TA, TB)];
 tuplezip(LA, LB) -> erlang:error({tuplezip_mismatch, LA, LB}).
@@ -83,8 +83,6 @@ member(X, [_|T]) -> member(X, T).
 
 
 name_free({int, _}, _N) -> false;
-
-name_free({rat, _, _}, _N) -> false;
 
 name_free({bool, _}, _N) -> false;
 
@@ -125,9 +123,12 @@ improve({Formals, Body}, Env) -> {{Formals, Body},
                                  end,
                                  Env)}.
 
-evalexp({int, Val}, Env) -> {{int, Val}, Env};
+evalexps(Es, Env) ->
+    lists:map(fun (E) -> {Val, _} = evalexp(E, Env),
+                         Val
+              end, Es).
 
-evalexp({rat, Num, Denom}, Env) -> {{rat, Num, Denom}, Env};
+evalexp({int, Val}, Env) -> {{int, Val}, Env};
 
 evalexp({bool, Val}, Env) -> {{bool, Val}, Env};
 
@@ -159,18 +160,13 @@ evalexp({list, [?VAL, {sym, Name}, Exp]}, Env) ->
     {Val, _} = evalexp(Exp, Env),
     {Val, bind(Name, Val, Env)};
 
-evalexp({list, [{closure, Formals, Body, CapturedEnv}|Actuals]}, Env)
-  when Formals =:= ['...'] ->
-    ActualValues = lists:map(fun (Actual) ->
-                                     {Val, _} = evalexp(Actual, Env), Val
-                             end, Actuals),
+evalexp({list, [{closure, ['...'], Body, CapturedEnv}|Actuals]}, Env) ->
+    ActualValues = evalexps(Actuals, Env),
     CombinedEnv = bind('...', {list, ActualValues}, extend(CapturedEnv, Env)),
     evalexp(Body, CombinedEnv);
 
 evalexp({list, [{closure, Formals, Body, CapturedEnv}|Actuals]}, Env) ->
-    ActualValues = lists:map(fun (Actual) ->
-                                     {Val, _} = evalexp(Actual, Env), Val
-                             end, Actuals),
+    ActualValues = evalexps(Actuals, Env),
     FormalsEnv = tuplezip(Formals, ActualValues),
     CombinedEnv = extend(FormalsEnv, extend(CapturedEnv, Env)),
     evalexp(Body, CombinedEnv);
@@ -191,8 +187,8 @@ evalexp({list, [?IF, Cond, E1, E2]}, Env) ->
 evalexp({list, [?MAP, Fn, Elements]}, Env) ->
     {{list, ElementsVal}, _} = evalexp(Elements, Env),
     {FnVal, _} = evalexp(Fn, Env),
-    %% Map = fun lists:map/2,
-    Map = fun concurrency:parallel_map/2,
+    Map = fun lists:map/2,
+    %% Map = fun concurrency:parallel_map/2,
     Results = Map(fun (Element) ->
                           {V1, _} = evalexp(Element, Env),
                           {V2, _} = evalexp({list, [FnVal, V1]}, Env),
