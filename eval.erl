@@ -6,13 +6,13 @@
 
 -export([name_free/2]).
 
--define(IF,      {sym, 'if'}).
+-define(IF,      {sym, 'ifx'}).
 -define(LAMBDA,  {sym, 'lambda'}).
 -define(QUOTE,   {sym, 'quote'}).
--define(LET,     {sym, 'let'}).
--define(LETSTAR, {sym, 'let*'}).
+-define(LET,     {sym, 'letx'}).
+-define(LETSTAR, {sym, 'letx*'}).
 -define(DEFINE,  {sym, 'define'}).
--define(VAL,     {sym, 'val'}).
+-define(VAL,     {sym, 'valx'}).
 -define(MAP,     {sym, 'map'}).
 -define(EVAL,    {sym, 'eval'}).
 -define(APPLY,   {sym, 'apply'}).
@@ -61,7 +61,9 @@ printexp({list, L}) ->
     printlist(L),
     io:format(")");
 printexp({prim, _}) -> io:format("<prim>");
-printexp({closure, _, _, _}) -> io:format("<closure>");
+printexp({closure, Formals, Body, _CapturedEnv}) ->
+    PrintableFormals = {list, lists:map(fun(Name) -> {sym,Name} end, Formals)},
+    printexp({list, [{sym, lambda}, PrintableFormals, Body]});
 printexp([]) -> io:format("");
 printexp([H|T]) ->
     printexp(H),
@@ -132,7 +134,11 @@ evalexp({int, Val}, Env) -> {{int, Val}, Env};
 
 evalexp({bool, Val}, Env) -> {{bool, Val}, Env};
 
+evalexp({sym, nil}, Env) -> {{list, []}, Env};
+
 evalexp({sym, Name}, Env) -> {lookup(Name, Env), Env};
+
+evalexp({list, []}, Env) -> {{list, []}, Env};
 
 evalexp({list, [?LETSTAR, {list, []}, Body]}, Env) ->
     evalexp(Body, Env);
@@ -161,8 +167,8 @@ evalexp({list, [?VAL, {sym, Name}, Exp]}, Env) ->
     {Val, bind(Name, Val, Env)};
 
 evalexp({list, [{closure, ['...'], Body, CapturedEnv}|Actuals]}, Env) ->
-    ActualValues = evalexps(Actuals, Env),
-    CombinedEnv = bind('...', {list, ActualValues}, extend(CapturedEnv, Env)),
+    ActualValues = {list, evalexps(Actuals, Env)},
+    CombinedEnv = bind('...', ActualValues, extend(CapturedEnv, Env)),
     evalexp(Body, CombinedEnv);
 
 evalexp({list, [{closure, Formals, Body, CapturedEnv}|Actuals]}, Env) ->
