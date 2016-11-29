@@ -11,7 +11,6 @@ get_pid({Pid, _}) -> Pid.
 
 loop(MachineManager) ->
     receive
-<<<<<<< HEAD
         {which_died, Pairs} ->
             DeadPairs = lists:filter(fun isdead/1, Pairs),
             DeadIds = lists:map(fun get_id/1, DeadPairs),

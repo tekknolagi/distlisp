@@ -83,8 +83,10 @@ loop(Master, ProcessMgr, ThreadPool, Pairs) ->
         loop(Master, ProcessMgr, queue:from_list(NewPool), NewPairs);
 
     system_check ->
+        io:format("Received System Check ~n"),
         NumWorkers = queue:len(ThreadPool),
         machineinfo(Master, NumWorkers),
+        io:format("Sent Machine Info ~n"),
         loop(Master, ProcessMgr, ThreadPool, Pairs)
   end.
 
