@@ -67,6 +67,7 @@ init_machine (Master) ->
   loop(Master, ProcessMgr, ThreadPool, []).
 
 loop(Master, ProcessMgr, ThreadPool, Pairs) ->
+  io:format("Worker at top of loop~n"),
   receive
     {delegate, {work, Master, Id, {Exp, Env}}} ->
         {ChosenWorker, NewPool} = thread_pool:next_node(ThreadPool),
