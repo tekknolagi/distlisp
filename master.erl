@@ -15,8 +15,8 @@ machinedata([H | T]) ->
   Comp = net_kernel:connect_node(H),
   if Comp ->
     Pid = spawn(H, thread_pool, init_machine, [self()]),
-    receive {Pid, NumWorkers, SysCpu, SysMem} ->
-      [{Pid, NumWorkers, SysCpu, SysMem} | machinedata(T)]
+    receive {Pid, Workers, SysCpu, SysMem} ->
+      [ {H, Pid, Workers, SysCpu, SysMem} | machinedata(T)]
     end;
   true -> error
   end;
@@ -33,17 +33,13 @@ machinedata(Node) ->
 machinedata(_) -> error.
 
 pollhealth([]) -> [];
-pollhealth([{Pid, NumWorkers, SysCpu, SysMem}|T]) ->
-    Pid ! check_who_died,
-    receive {dead, Pid, Dead} -> 
-      NewNum = NumWorkers - length(Dead)
-    end,
-%    requeue(Dead),
+pollhealth([{Node, Pid, ThreadPool, SysCpu, SysMem}|T]) ->
     Pid ! system_check,
-    receive {Pid, NumWorkers,SysCpu, SysMem} ->
-       io:format("Received Machine health"),
-       [{Pid, NewNum, SysCpu, SysMem} | pollhealth(T)]
-    end;
+    receive {Pid, SysCpu, SysMem} ->
+       [{Node, Pid, ThreadPool, SysCpu, SysMem} | pollhealth(T)]
+    after 100 -> 
+       [{data, time, out} | pollhealth(T)]
+    end,
 pollhealth(_) -> error.
 
 

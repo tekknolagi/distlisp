@@ -1,6 +1,6 @@
 -module(thread_pool).
 -export([create/1, create/2, next_node/1, add/1, add/2]).
--export([waitforwork/0, init_machine/1, loop/4, calculate/0, reap/3]).
+-export([waitforwork/0, init_machine/1, loop/1, calculate/0, reap/3]).
 
 
 create(0, _ServerPool, t) -> queue:from_list([]);%erlang:error(invalid_num_node);
@@ -38,7 +38,7 @@ add(Nodes) ->
 calculate () -> 
    {Total, Alloc, _} = memsup:get_memory_data(),
    Cores = erlang:system_info(logical_processors_available),
-   (Total - Alloc) * Cores div 1024.
+  erlang:max((Total - Alloc)  div 1048576, 2000).
 
 
 list_delete([], _) -> [];
@@ -61,34 +61,19 @@ reap(ThreadPool, Pairs, DeadPids) ->
 init_machine (Master) ->
   application:start(sasl),
   application:start(os_mon),
-  ThreadPool = create(100),
-  machineinfo(Master, queue:len(ThreadPool)),
-  ProcessMgr = spawn(process_manager, loop, [self()]),
-  loop(Master, ProcessMgr, ThreadPool, []).
+  ThreadPool = create(calculate()),
+  Master ! {self(), ThreadPool, erlang:system_info(logical_processors_available),
+            memsup:get_memory_data()},
+  loop(Master).
 
-loop(Master, ProcessMgr, ThreadPool, Pairs) ->
-  io:format("Worker at top of loop~n"),
-  receive
-    {delegate, {work, Master, Id, {Exp, Env}}} ->
-        {ChosenWorker, NewPool} = thread_pool:next_node(ThreadPool),
-        ChosenWorker ! {work, Master, Id, {Exp, Env}},
-        loop(Master, ProcessMgr, NewPool, [{ChosenWorker, Id}|Pairs]);
-
-    check_who_died ->
-        ProcessMgr ! {which_died, Pairs},
-        loop(Master, ProcessMgr, ThreadPool, Pairs);
-
-    {dead_procs, DeadIds, DeadPids} ->
-        Master ! {dead, self(), DeadIds},
-        {NewPool, NewPairs} = reap(queue:to_list(ThreadPool), Pairs, DeadPids),
-        loop(Master, ProcessMgr, queue:from_list(NewPool), NewPairs);
-
+loop(Master) ->
+  receive 
     system_check ->
-        io:format("Received System Check ~n"),
-        NumWorkers = queue:len(ThreadPool),
-        machineinfo(Master, NumWorkers),
-        io:format("Sent Machine Info ~n"),
-        loop(Master, ProcessMgr, ThreadPool, Pairs)
+        Master ! {self(), erlang:system_info(logical_processors_available),
+                  memsup:get_memory_data()},
+        loop(Master);
+   Other -> io:format("Machine received ~p~n", [Other]),
+            loop(Master)
   end.
 
 
@@ -99,12 +84,6 @@ waitforwork() ->
         {work, Sender, Id, {Exp, Env} } -> Sender ! {result, Id, eval:evalexp(Exp,Env)}
     end,
     waitforwork().
-
-machineinfo (Master, NumWorkers) ->
-   Master ! {self(), NumWorkers,
-             erlang:system_info(logical_processors_available),
-             memsup:get_memory_data()}.
-
 % Various ways to calculate init number of processes
 
  % Master
