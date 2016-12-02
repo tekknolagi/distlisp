@@ -4,16 +4,20 @@
          loop/1, calculate1/0, calculate2/0, reap/3]).
 
 
+newagent(Server) ->
+    spawn(Server, stealing_worker, agent_loop, []).
+
+
 create(0, _ServerPool, t) -> queue:from_list([]);%erlang:error(invalid_num_node);
 
 create(1, ServerPool, t) -> {NextServer, _NewPool} = next_node(ServerPool),
-                            Pid = spawn(NextServer, ?MODULE, waitforwork, []),
-                            queue:from_list([Pid]);
+                            Agent = newagent(NextServer),
+                            queue:from_list([Agent]);
 
 create(NumNodes, ServerPool, t) when NumNodes > 1 ->
     {NextServer, NewPool} = next_node(ServerPool),
-    Pid = spawn(NextServer, ?MODULE, waitforwork, []),
-    queue:in(Pid, create(NumNodes-1, NewPool, t)).
+    Agent = newagent(NextServer),
+    queue:in(Agent, create(NumNodes-1, NewPool, t)).
 
 create(NumNodes, ServerPool) ->
     create(NumNodes, queue:from_list([node()|ServerPool]), t).
@@ -36,7 +40,7 @@ add(Nodes) ->
     add(Nodes, 1).
 
 
-calculate1() -> 
+calculate1() ->
    {Total, Alloc, _} = memsup:get_memory_data(),
    erlang:min((Total - Alloc)  div 1048576, 2000).
 
@@ -45,7 +49,7 @@ calculate2() ->
    Cores = erlang:system_info(logical_processors_available),
    erlang:min((Total - Alloc) div 1048576 * 4, 2000*Cores).
 
-   
+
 list_delete([], _) -> [];
 list_delete([HA|TA], []) -> [HA|TA];
 list_delete([HA|TA], [H|T]) -> list_delete(lists:delete(H, [HA|TA]), T);
@@ -61,28 +65,31 @@ key_delete(_, _) -> error.
 
 reap(ThreadPool, Pairs, DeadPids) ->
    {list_delete(ThreadPool, DeadPids), key_delete(Pairs, DeadPids)}.
- 
 
 init_workers (Master, CalcAlg) ->
-  case CalcAlg of
-    1 -> ThreadPool = create(calculate1());
-    2 -> ThreadPool = create(calculate2())
+  ThreadPool = case CalcAlg of
+    1 -> create(calculate1());
+    2 -> create(calculate2())
   end,
+  lists:map(fun(Agent) -> Agent ! {master, Master} end,
+            queue:to_list(ThreadPool)),
   Master ! {workers, queue:to_list(ThreadPool)}.
 
 init_machine (Master, CalcAlg) ->
   application:start(sasl),
   application:start(os_mon),
-  case CalcAlg of 
-    1 -> ThreadPool = create(calculate1());
-    2-> ThreadPool = create(calculate2())
+  ThreadPool = case CalcAlg of
+    1 -> create(calculate1());
+    2 -> create(calculate2())
   end,
+  lists:map(fun(Agent) -> Agent ! {master, Master} end,
+            queue:to_list(ThreadPool)),
   Master ! {self(), ThreadPool, erlang:system_info(logical_processors_available),
             memsup:get_memory_data()},
   loop(Master).
 
 loop(Master) ->
-  receive 
+  receive
     system_check ->
         Master ! {self(), erlang:system_info(logical_processors_available),
                   memsup:get_memory_data()},

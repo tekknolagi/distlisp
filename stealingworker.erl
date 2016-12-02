@@ -20,16 +20,20 @@ waitforwork(Agent) ->
 
 agent_loop(Master) ->
     io:format("New agent being created~n"),
-    Worker = spawn(fun() -> waitforwork(self()) end),
-    WorkQueue = queue:new(),
-    agent_loop(Worker, Master, WorkQueue).
+    receive
+        {master, Master} ->
+            Worker = spawn(fun() -> waitforwork(self()) end),
+            WorkQueue = queue:new(),
+            agent_loop(Worker, Master, WorkQueue)
+    end.
 
 agent_loop(Worker, Master, WorkQueue) ->
     receive
         {send_state, Requester} ->
             Requester ! {state, Worker, Master, queue:to_list(WorkQueue)},
             agent_loop(Worker, Master, WorkQueue);
-        {add_work, Id, Exp, Env} ->
+        {delegate, Id, Exp, Env} ->
+            io:format("Received delegate~n"),
             NewQueue = queue:in({work, Master, {Id, Exp, Env}}, WorkQueue),
             agent_loop(Worker, Master, NewQueue);
         {request_for_work, Requester} ->
