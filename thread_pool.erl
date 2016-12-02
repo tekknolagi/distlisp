@@ -1,6 +1,7 @@
 -module(thread_pool).
 -export([create/1, create/2, next_node/1, add/1, add/2]).
--export([waitforwork/0, init_machine/1, loop/1, calculate/0, reap/3]).
+-export([waitforwork/0, init_machine/2, init_workers/2,
+         loop/1, calculate1/0, calculate2/0, reap/3]).
 
 
 create(0, _ServerPool, t) -> queue:from_list([]);%erlang:error(invalid_num_node);
@@ -35,12 +36,16 @@ add(Nodes) ->
     add(Nodes, 1).
 
 
-calculate () -> 
+calculate1() -> 
+   {Total, Alloc, _} = memsup:get_memory_data(),
+   erlang:min((Total - Alloc)  div 1048576, 2000).
+
+calculate2() ->
    {Total, Alloc, _} = memsup:get_memory_data(),
    Cores = erlang:system_info(logical_processors_available),
-  erlang:max((Total - Alloc)  div 1048576, 2000).
+   erlang:min((Total - Alloc) div 1048576 * 4, 2000*Cores).
 
-
+   
 list_delete([], _) -> [];
 list_delete([HA|TA], []) -> [HA|TA];
 list_delete([HA|TA], [H|T]) -> list_delete(lists:delete(H, [HA|TA]), T);
@@ -58,10 +63,20 @@ reap(ThreadPool, Pairs, DeadPids) ->
    {list_delete(ThreadPool, DeadPids), key_delete(Pairs, DeadPids)}.
  
 
-init_machine (Master) ->
+init_workers (Master, CalcAlg) ->
+  case CalcAlg of
+    1 -> ThreadPool = create(calculate1());
+    2 -> ThreadPool = create(calculate2())
+  end,
+  Master ! {workers, queue:to_list(ThreadPool)}.
+
+init_machine (Master, CalcAlg) ->
   application:start(sasl),
   application:start(os_mon),
-  ThreadPool = create(calculate()),
+  case CalcAlg of 
+    1 -> ThreadPool = create(calculate1());
+    2-> ThreadPool = create(calculate2())
+  end,
   Master ! {self(), ThreadPool, erlang:system_info(logical_processors_available),
             memsup:get_memory_data()},
   loop(Master).

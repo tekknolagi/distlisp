@@ -1,5 +1,5 @@
 -module(master).
--export([machinedata/1, pollhealth/1, parallel_map/3]).
+-export([connect_worker_nodes/2, pollhealth/1, parallel_map/3]).
 -export([idserver/0, freshid/1, test/1]).
 
 %%%% Need a requeue function to re-assign dead IDs
@@ -10,27 +10,27 @@
 %%%
 %%%  Need to implement schemes besides round robin
 
-machinedata([]) -> [];
-machinedata([H | T]) ->
+connect_worker_nodes([], _Type) -> [];
+connect_worker_nodes([H | T], Type) ->
   Comp = net_kernel:connect_node(H),
   if Comp ->
-    Pid = spawn(H, thread_pool, init_machine, [self()]),
-    receive {Pid, Workers, SysCpu, SysMem} ->
-      [ {H, Pid, Workers, SysCpu, SysMem} | machinedata(T)]
-    end;
-  true -> error
-  end;
-machinedata(Node) ->
-  Comp = net_kernel:connect_node(Node),
-  if Comp ->
-    Pid = spawn(Node, thread_pool, init_machine, [self()]),
-    receive {Node, NumWorkers, SysCpu, SysMem} ->
-      {Pid, NumWorkers, SysCpu, SysMem}
-    end;
-  true -> error
-  end;
+    case Type of
+      bymachine ->
+        _InitPid = spawn(H, thread_pool, init_machine, [self()]),
+        receive {Pid, Workers, SysCpu, SysMem} ->
+          [ {H, Pid, Workers, SysCpu, SysMem} |  connect_worker_nodes(T, Type)]
+        end;
+      flat ->
+        _InitPid = spawn(H, thread_pool, init_workers, [self()]),
+        receive {workers, Threads} ->
+           [Threads | connect_worker_nodes(T, Type)]
+        end
+     end;
+     true ->
+       error
+  end.
+  
 
-machinedata(_) -> error.
 
 pollhealth([]) -> [];
 pollhealth([{Node, Pid, ThreadPool, SysCpu, SysMem}|T]) ->
@@ -38,8 +38,8 @@ pollhealth([{Node, Pid, ThreadPool, SysCpu, SysMem}|T]) ->
     receive {Pid, SysCpu, SysMem} ->
        [{Node, Pid, ThreadPool, SysCpu, SysMem} | pollhealth(T)]
     after 100 -> 
-       [{data, time, out} | pollhealth(T)]
-    end,
+       [{timeout, Node} | pollhealth(T)]
+    end;
 pollhealth(_) -> error.
 
 
@@ -99,7 +99,7 @@ test(Machines) ->
     {ok,{prog, SimpleExp}} = parser:parse(T),
     WorkPacket = {SimpleExp, StartingEnv},
     io:format("Calling pmap...~n"),
-    Pids = lists:map(fun({Pid,_,_,_}) -> Pid end, machinedata(Machines)),
+    Pids = lists:map(fun({Pid,_,_,_}) -> Pid end, connect_worker_nodes(Machines, flat )),
     io:format("Currently connected to: ~p~n", [nodes()]),
                     %WorkPkt = {work, Master, freshid(IdServer), Work},
                     %Machine ! {delegate, WorkPkt},
