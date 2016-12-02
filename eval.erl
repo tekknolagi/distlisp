@@ -83,11 +83,11 @@ member(X, [X|_T]) -> true;
 member(X, [_|T]) -> member(X, T).
 
 
-name_free({int, _}, _N) -> false;
+name_free({int, _}, _) -> false;
 
-name_free({bool, _}, _N) -> false;
+name_free({bool, _}, _) -> false;
 
-name_free({quote, V}, _N) -> false;
+name_free({quote, _}, _) -> false;
 
 name_free({sym, V}, N) -> V =:= N;
 
