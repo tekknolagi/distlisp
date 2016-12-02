@@ -62,13 +62,13 @@ freshid(IdServer) ->
 
 
 parallel_map_rr(_IdServer, [], _MachineQueue) -> [];
-parallel_map_rr(IdServer, [Work|T], MachineQueue) ->
+parallel_map_rr(IdServer, [{Exp,Env}|T], MachineQueue) ->
     {Machine, NewMachineQueue} = thread_pool:next_node(MachineQueue),
     Master = self(),
     Apply = fun() ->
                     io:format("Sending delegate to ~p...~n", [Machine]),
                     FreshId = freshid(IdServer),
-                    Machine ! {delegate, {work, self(), FreshId, Work}},
+                    Machine ! {delegate, FreshId, Exp, Env},
                     io:format("...sent.~n"),
                     receive
                         {result, Id, Val} ->

@@ -1,6 +1,6 @@
 CC=erlc
 SOURCES=basis.erl concurrency.erl eval.erl parser.erl reader.erl repl.erl\
-		thread_pool.erl
+		thread_pool.erl master.erl stealingworker.erl
 OBJECTS=$(SOURCES:.erl=.beam)
 
 all: $(OBJECTS) parser
