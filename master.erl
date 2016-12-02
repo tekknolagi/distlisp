@@ -1,5 +1,5 @@
 -module(master).
--export([connect_worker_nodes/2, pollhealth/1, parallel_map/3]).
+-export([connect_worker_nodes/2, pollhealth/1, parallel_map/4]).
 -export([idserver/0, freshid/1, test/1]).
 
 %%%% Need a requeue function to re-assign dead IDs
@@ -10,7 +10,8 @@
 %%%
 %%%  Need to implement schemes besides round robin
 
-connect_worker_nodes([], _Type) -> [];
+connect_worker_nodes([], bymachine) -> [];
+connect_worker_nodes([], flat) -> queue:from_list([]);
 connect_worker_nodes([H | T], Type) ->
   Comp = net_kernel:connect_node(H),
   if Comp ->
@@ -25,7 +26,7 @@ connect_worker_nodes([H | T], Type) ->
             %% TODO: give algorithm
         _InitPid = spawn(H, thread_pool, init_workers, [self(), 1]),
         receive {workers, Threads} ->
-           Threads ++ connect_worker_nodes(T, Type)
+           queue:join(Threads,connect_worker_nodes(T, Type))
         end
      end;
      true ->
@@ -60,48 +61,44 @@ freshid(IdServer) ->
         {fresh_id, FreshId} -> FreshId
     end.
 
-
 parallel_map_rr(_IdServer, [], _MachineQueue) -> [];
-parallel_map_rr(IdServer, [{Exp,Env}|T], MachineQueue) ->
-    {Machine, NewMachineQueue} = thread_pool:next_node(MachineQueue),
-    Master = self(),
-    Apply = fun() ->
-                    io:format("Sending delegate to ~p...~n", [Machine]),
+parallel_map_rr(IdServer, [{Exp,Env}|T], ProcQueue) ->
+    {Proc, NewProcQueue} = thread_pool:next_node(ProcQueue),
+    %Master = self(),
+    %Apply = fun() ->
                     FreshId = freshid(IdServer),
-                    Machine ! {delegate, FreshId, Exp, Env},
-                    io:format("...sent.~n"),
-                    receive
-                        {result, Id, Val} ->
-                            io:format("Sending ~p for collation...~n",
-                                      [Id]),
-                            Master ! {collate, self(), Id, Val}
-                    end
-            end,
-    [spawn(Apply)|parallel_map_rr(Master, T, NewMachineQueue)].
+                    Proc ! {delegate, FreshId, Exp, Env},
+                    io:format("Delegated packet ~p ~n", [FreshId]),
+    %        end,
+    [FreshId|parallel_map_rr(IdServer, T, NewProcQueue)].
 
 
-parallel_map(IdServer, WorkPackets, MachineQueue) ->
-    Avengers = parallel_map_rr(IdServer, WorkPackets, MachineQueue),
-    assemble(Avengers). %% Really, they are pids.
+parallel_map(IdServer, WorkPackets, Processes, Type) ->
+    case Type of roundrobin ->
+       Avengers = parallel_map_rr(IdServer, WorkPackets, Processes),
+       assemble(Avengers)
+    end. %% Really, they are pids.
 
 
 assemble([]) -> [];
-assemble([Pid|Rest]) -> receive
-                            {collate, Pid, Id, Val} ->
-                                io:format("Collating ~p~n", [Id]),
-                                io:format("Rest ~p~n", [Rest]),
+assemble([Id|Rest]) -> 
+                    receive
+                        {result, Id, Val} ->
                                 [{Id, Val}|assemble(Rest)]
-                        end.
+                    end.
 
 test(Machines) ->
+    io:format("~p is extrmely me~n", [self()]),
     global:register_name(iogl, self()),
     IdServer = spawn(fun idserver/0),
     StartingEnv = basis:basis(),
-    {ok,T,_} = scanner:string("[op+ 1 2];"),
-    {ok,{prog, SimpleExp}} = parser:parse(T),
-    WorkPacket = {SimpleExp, StartingEnv},
+    %{ok,T,_} = scanner:string("[op+ 1 2];"),
+    %{ok,{prog, SimpleExp}} = parser:parse(T),
+    %WorkPacket = {SimpleExp, StartingEnv},
     io:format("Calling pmap...~n"),
-    Pids = lists:map(fun({Pid,_,_,_}) -> Pid end, connect_worker_nodes(Machines, flat )),
+    Pids = master:connect_worker_nodes(Machines, flat),
+    WP = [{[{sym, binplus}, {int, 3},{int, 3}], StartingEnv},
+          {[{sym, binplus}, {int, 5}, {int, 5}], StartingEnv}],
     io:format("Currently connected to: ~p~n", [nodes()]),
                     %WorkPkt = {work, Master, freshid(IdServer), Work},
                     %Machine ! {delegate, WorkPkt},
@@ -109,5 +106,7 @@ test(Machines) ->
     %receive
     %    V -> io:format("RECEIVED ~p~n", [V])
     %end,
-    Res = parallel_map(IdServer, [WorkPacket,WorkPacket], queue:from_list(Pids)),
-    io:format("Res: ~p~n", [Res]).
+    %Res = parallel_map(IdServer, [WorkPacket,WorkPacket], queue:from_list(Pids)),
+   % io:format("Res: ~p~n", [Res]).
+   master:parallel_map(IdServer, WP, Pids, roundrobin).
+  
