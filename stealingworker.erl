@@ -1,16 +1,15 @@
 -module(stealingworker).
--export([agent_loop/1]).
+-export([agent_loop/0]).
 
 %%% Worker section.
 
 waitforwork(Agent) ->
-    io:format("Requesting work...~n"),
     Agent ! {request_for_work, self()},
     receive
         {work, Master, {Id, Exp, Env}} ->
             Master ! {result, Id, eval:evalexp(Exp, Env)};
         nothing_yet ->
-            timer:sleep(500);
+            timer:sleep(5000);
         What ->
             io:format("Received invalid response of ~p~n", [What])
     end,
@@ -18,11 +17,11 @@ waitforwork(Agent) ->
 
 %%% Agent section.
 
-agent_loop(Master) ->
-    io:format("New agent being created~n"),
+agent_loop() ->
     receive
         {master, Master} ->
-            Worker = spawn(fun() -> waitforwork(self()) end),
+            Self = self(),
+            Worker = spawn(fun() -> waitforwork(Self) end),
             WorkQueue = queue:new(),
             agent_loop(Worker, Master, WorkQueue)
     end.
@@ -33,17 +32,15 @@ agent_loop(Worker, Master, WorkQueue) ->
             Requester ! {state, Worker, Master, queue:to_list(WorkQueue)},
             agent_loop(Worker, Master, WorkQueue);
         {delegate, Id, Exp, Env} ->
-            io:format("Received delegate~n"),
             NewQueue = queue:in({work, Master, {Id, Exp, Env}}, WorkQueue),
             agent_loop(Worker, Master, NewQueue);
         {request_for_work, Requester} ->
-            io:format("Received request for work~n"),
             case queue:out(WorkQueue) of
                 {empty, OldQueue} ->
                     Requester ! nothing_yet,
                     agent_loop(Worker, Master, OldQueue);
                 {{value, NextItem}, NewQueue} ->
-                    Requester ! {work, Master, NextItem},
+                    Requester ! NextItem,
                     agent_loop(Worker, Master, NewQueue)
             end
     end.

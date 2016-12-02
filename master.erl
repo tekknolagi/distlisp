@@ -16,14 +16,16 @@ connect_worker_nodes([H | T], Type) ->
   if Comp ->
     case Type of
       bymachine ->
-        _InitPid = spawn(H, thread_pool, init_machine, [self()]),
+            %% TODO: give algorithm
+        _InitPid = spawn(H, thread_pool, init_machine, [self(), 1]),
         receive {Pid, Workers, SysCpu, SysMem} ->
           [ {H, Pid, Workers, SysCpu, SysMem} |  connect_worker_nodes(T, Type)]
         end;
       flat ->
-        _InitPid = spawn(H, thread_pool, init_workers, [self()]),
+            %% TODO: give algorithm
+        _InitPid = spawn(H, thread_pool, init_workers, [self(), 1]),
         receive {workers, Threads} ->
-           [Threads | connect_worker_nodes(T, Type)]
+           Threads ++ connect_worker_nodes(T, Type)
         end
      end;
      true ->

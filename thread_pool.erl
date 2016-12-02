@@ -5,7 +5,7 @@
 
 
 newagent(Server) ->
-    spawn(Server, stealing_worker, agent_loop, []).
+    spawn(Server, stealingworker, agent_loop, []).
 
 
 create(0, _ServerPool, t) -> queue:from_list([]);%erlang:error(invalid_num_node);
@@ -39,15 +39,16 @@ add(Nodes, NumNodes) when NumNodes > 0 ->
 add(Nodes) ->
     add(Nodes, 1).
 
+percore() -> 5.
 
 calculate1() ->
    {Total, Alloc, _} = memsup:get_memory_data(),
-   erlang:min((Total - Alloc)  div 1048576, 2000).
+   erlang:min((Total - Alloc)  div 1048576, percore()).
 
 calculate2() ->
    {Total, Alloc, _} = memsup:get_memory_data(),
    Cores = erlang:system_info(logical_processors_available),
-   erlang:min((Total - Alloc) div 1048576 * 4, 2000*Cores).
+   erlang:min((Total - Alloc) div 1048576 * 4, percore()*Cores).
 
 
 list_delete([], _) -> [];
@@ -67,6 +68,8 @@ reap(ThreadPool, Pairs, DeadPids) ->
    {list_delete(ThreadPool, DeadPids), key_delete(Pairs, DeadPids)}.
 
 init_workers (Master, CalcAlg) ->
+  application:start(sasl),
+  application:start(os_mon),
   ThreadPool = case CalcAlg of
     1 -> create(calculate1());
     2 -> create(calculate2())
