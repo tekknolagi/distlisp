@@ -59,13 +59,16 @@ bif(F) ->
 
 intdiv(A, B) -> trunc(A/B).
 
-
 map_proc([Fn, {list, Ls}], Env) ->
-    Map = fun lists:map/2,
-    Results = Map(fun (E) ->
-                          {V, _} = eval:evalexp({list, [Fn, E]}, Env),
-                          V
-                  end, Ls),
+    % Map = fun lists:map/2,
+    IdServer = eval:lookup('__idserver', Env),
+    Agents = eval:lookup('__agents', Env),
+    FnApplications = lists:map(fun (Exp) ->
+                                       {list, [Fn, Exp]}
+                               end, Ls),
+    Envs = lists:duplicate(length(Ls), Env),
+    WorkPackets = eval:tuplezip(FnApplications, Envs),
+    Results = master:parallel_map(IdServer, WorkPackets, Agents, roundrobin),
     {{list, Results}, Env}.
 
 

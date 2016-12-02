@@ -10,7 +10,7 @@ waitforwork(Agent) ->
             {Val, _} = eval:evalexp(Exp, Env),
             Master ! {result, Id, Val};
         nothing_yet ->
-            timer:sleep(5000);
+            timer:sleep(100);
         What ->
             io:format("Received invalid response of ~p~n", [What])
     end,

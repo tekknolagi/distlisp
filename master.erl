@@ -74,10 +74,11 @@ parallel_map_rr(IdServer, [{Exp,Env}|T], ProcQueue) ->
 
 
 parallel_map(IdServer, WorkPackets, Processes, Type) ->
-    case Type of roundrobin ->
+    IdValPairs = case Type of roundrobin ->
        Avengers = parallel_map_rr(IdServer, WorkPackets, Processes),
-       assemble(Avengers)
-    end. %% Really, they are pids.
+       assemble(Avengers) %% Really, they are pids.
+    end,
+    lists:map(fun({Id,Val}) -> Val end, IdValPairs).
 
 
 assemble([]) -> [];
