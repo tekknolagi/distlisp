@@ -13,7 +13,6 @@
 -define(LETSTAR, {sym, 'letx*'}).
 -define(DEFINE,  {sym, 'define'}).
 -define(VAL,     {sym, 'valx'}).
--define(MAP,     {sym, 'map'}).
 -define(EVAL,    {sym, 'eval'}).
 -define(APPLY,   {sym, 'apply'}).
 
@@ -54,7 +53,7 @@ printexp({sym, Val}) -> io:format("~s", [Val]);
 printexp({bool, true}) -> io:format("#t");
 printexp({bool, false}) -> io:format("#f");
 printexp({quote, QuotedExp}) ->
-    io:format("'"),
+%    io:format("'"),
     printexp(QuotedExp);
 printexp({list, L}) ->
     io:format("("),
@@ -87,6 +86,8 @@ member(X, [_|T]) -> member(X, T).
 name_free({int, _}, _N) -> false;
 
 name_free({bool, _}, _N) -> false;
+
+name_free({quote, V}, _N) -> false;
 
 name_free({sym, V}, N) -> V =:= N;
 
@@ -138,6 +139,11 @@ evalexp({sym, nil}, Env) -> {{list, []}, Env};
 
 evalexp({sym, Name}, Env) -> {lookup(Name, Env), Env};
 
+evalexp({quote, {list, Ls}}, Env) ->
+    {{list, lists:map(fun (E) -> {quote, E} end, Ls)}, Env};
+
+evalexp({quote, Exp}, Env) -> {Exp, Env};
+
 evalexp({list, []}, Env) -> {{list, []}, Env};
 
 evalexp({list, [?LETSTAR, {list, []}, Body]}, Env) ->
@@ -155,8 +161,6 @@ evalexp({list, [?LET, {list, Bindings}, Body]}, Env) ->
                           end, Bindings),
     NewEnv = extend(BoundVars, Env),
     evalexp(Body, NewEnv);
-
-evalexp({list, [?QUOTE, QuotedExp]}, Env) -> {QuotedExp, Env};
 
 evalexp({list, [?DEFINE, {sym, Name}, Formals, Body]}, Env) ->
     {Closure, _} = evalexp({list, [?LAMBDA, Formals, Body]}, Env),
@@ -189,18 +193,6 @@ evalexp({list, [?IF, Cond, E1, E2]}, Env) ->
         {bool, false} -> evalexp(E2, Env);
         _ -> erlang:error({bad_if, Cond})
     end;
-
-evalexp({list, [?MAP, Fn, Elements]}, Env) ->
-    {{list, ElementsVal}, _} = evalexp(Elements, Env),
-    {FnVal, _} = evalexp(Fn, Env),
-    Map = fun lists:map/2,
-    %% Map = fun concurrency:parallel_map/2,
-    Results = Map(fun (Element) ->
-                          {V1, _} = evalexp(Element, Env),
-                          {V2, _} = evalexp({list, [FnVal, V1]}, Env),
-                          V2
-                  end, ElementsVal),
-    {{list, Results}, Env};
 
 evalexp({list, [{prim, PrimFn}|Args]}, Env) -> PrimFn(Args, Env);
 

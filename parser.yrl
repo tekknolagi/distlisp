@@ -85,7 +85,7 @@ quotable -> list : '$1'.
 
 opexp -> exp oper exp : mklist(['$2', '$1', '$3']).
 opexp -> unaryoper exp : mklist(['$1', '$2']).
-opexp -> '\'' quotable : mklist([{sym,quote},'$2']).
+opexp -> '\'' quotable : {quote,'$2'}.
 
 lambda ->
     'fn' '(' arglist ')' '=' exp : mklist([{sym, 'lambda'}, mklist('$3'), '$6']).

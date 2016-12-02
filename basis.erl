@@ -1,9 +1,9 @@
 -module(basis).
 -export([basis/0]).
--export([binop/2, intdiv/2, exp_proc/2, not_proc/2, and_proc/2, or_proc/2,
-         cons_proc/2, car_proc/2, cdr_proc/2, worker_proc/2, check_expect/2,
-         save_state/2, load_state/2, print_proc/2, compile_proc/2, env_proc/2,
-         class_proc/2, remove_prims/1, bif/1]).
+-export([binop/2, intdiv/2, map_proc/2, exp_proc/2, not_proc/2, and_proc/2,
+         or_proc/2, cons_proc/2, car_proc/2, cdr_proc/2, worker_proc/2,
+         check_expect/2, save_state/2, load_state/2, print_proc/2,
+         compile_proc/2, env_proc/2, class_proc/2, remove_prims/1, bif/1]).
 
 
 basis() ->
@@ -17,6 +17,7 @@ basis() ->
                       {'bintimes', basis:bif(basis:binop(fun erlang:'*'/2, int))},
                       {'bindiv', basis:bif(basis:binop(fun basis:intdiv/2, int))},
                       {'bineq', basis:bif(basis:binop(fun erlang:'=:='/2, bool))},
+                      {'map', basis:bif(fun basis:map_proc/2)},
                       {'exp', basis:bif(fun basis:exp_proc/2)},
                       {'binlt', basis:bif(basis:binop(fun erlang:'<'/2, bool))},
                       {'bingt', basis:bif(basis:binop(fun erlang:'>'/2, bool))},
@@ -57,6 +58,15 @@ bif(F) ->
 
 
 intdiv(A, B) -> trunc(A/B).
+
+
+map_proc([Fn, {list, Ls}], Env) ->
+    Map = fun lists:map/2,
+    Results = Map(fun (E) ->
+                          {V, _} = eval:evalexp({list, [Fn, E]}, Env),
+                          V
+                  end, Ls),
+    {{list, Results}, Env}.
 
 
 exp_proc([{int, AV}, {int, BV}], Env) -> {{int, round(math:pow(AV, BV))}, Env}.
