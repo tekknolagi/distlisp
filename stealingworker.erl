@@ -4,25 +4,36 @@
 %%% Worker section.
 
 waitforwork(Agent) ->
+    io:format("Requesting work...~n"),
     Agent ! {request_for_work, self()},
     receive
         {work, Master, {Id, Exp, Env}} ->
             Master ! {result, Id, eval:evalexp(Exp, Env)};
         nothing_yet ->
-            timer:sleep(500)
+            timer:sleep(500);
+        What ->
+            io:format("Received invalid response of ~p~n", [What])
     end,
     waitforwork(Agent).
 
 %%% Agent section.
 
 agent_loop(Master) ->
+    io:format("New agent being created~n"),
     Worker = spawn(fun() -> waitforwork(self()) end),
     WorkQueue = queue:new(),
     agent_loop(Worker, Master, WorkQueue).
 
 agent_loop(Worker, Master, WorkQueue) ->
     receive
+        {send_state, Requester} ->
+            Requester ! {state, Worker, Master, queue:to_list(WorkQueue)},
+            agent_loop(Worker, Master, WorkQueue);
+        {add_work, Id, Exp, Env} ->
+            NewQueue = queue:in({work, Master, {Id, Exp, Env}}, WorkQueue),
+            agent_loop(Worker, Master, NewQueue);
         {request_for_work, Requester} ->
+            io:format("Received request for work~n"),
             case queue:out(WorkQueue) of
                 {empty, OldQueue} ->
                     Requester ! nothing_yet,
