@@ -7,7 +7,8 @@ waitforwork(Agent) ->
     Agent ! {request_for_work, self()},
     receive
         {work, Master, {Id, Exp, Env}} ->
-            Master ! {result, Id, eval:evalexp(Exp, Env)};
+            {Val, _} = eval:evalexp(Exp, Env),
+            Master ! {result, Id, Val};
         nothing_yet ->
             timer:sleep(5000);
         What ->
