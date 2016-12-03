@@ -8,8 +8,7 @@ waitforwork(Agent) ->
     receive
         {work, Master, {Id, Exp, Env}} ->
             {Val, _} = eval:evalexp(Exp, Env),
-            Master ! {result, Id, Val},
-
+            Master ! {result, Id, Val};
         nothing_yet ->
             timer:sleep(100);
         What ->
