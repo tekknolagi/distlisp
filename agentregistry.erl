@@ -1,9 +1,12 @@
 -module(agentregistry).
--export([loop/1]).
+-export([spawnloop/1]).
 
 % http://stackoverflow.com/questions/8817171
 shuffle(Ls) ->
     [X||{_,X} <- lists:sort([ {random:uniform(), N} || N <- Ls])].
+
+spawnloop(Agents) ->
+    spawn(fun () -> loop(Agents) end).
 
 loop(Agents) ->
     receive
