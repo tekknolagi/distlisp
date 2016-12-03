@@ -3,7 +3,7 @@
 -export([binop/2, intdiv/2, map_proc/2, pmap_proc/2, dmap_proc/2, exp_proc/2,
          not_proc/2, and_proc/2, or_proc/2, cons_proc/2, car_proc/2,
          cdr_proc/2, worker_proc/2, check_expect/2, save_state/2, load_state/2,
-         print_proc/2, compile_proc/2, env_proc/2, class_proc/2,
+         print_proc/2, compile_proc/2, env_proc/2, class_proc/2, time_proc/2,
          remove_prims/1, bif/1, parallel_map/2]).
 
 
@@ -39,6 +39,7 @@ basis() ->
                       {'env', basis:bif(fun basis:env_proc/2)},
                       {'class', {prim, fun basis:class_proc/2}},
                       {'workers', {list, [{sym, node()}]}},
+                      {'time', {prim, fun basis:time_proc/2}},
                       {'ok', {sym, ok}}
                      ],
                 Defs).
@@ -206,3 +207,13 @@ env_proc([], Env) ->
 
 class_proc([Name, Parent], Env) ->
     {{list, [Name, Parent]}, Env}.
+
+time_proc([Exp], Env) ->
+    statistics(runtime),
+    statistics(wall_clock),
+    {_Val, _} = eval:evalexp(Exp, Env),
+    {_, Time1} = statistics(runtime),
+    {_, Time2} = statistics(wall_clock),
+    Diff = {list, [{sym,cpu}, {int,Time1}, {sym,ms},
+                   {sym,wall}, {int,Time2}, {sym,ms}]},
+    {Diff, Env}.
