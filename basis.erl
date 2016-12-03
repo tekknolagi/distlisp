@@ -4,7 +4,7 @@
          not_proc/2, and_proc/2, or_proc/2, cons_proc/2, car_proc/2,
          cdr_proc/2, worker_proc/2, check_expect/2, save_state/2, load_state/2,
          print_proc/2, compile_proc/2, env_proc/2, class_proc/2,
-         remove_prims/1, bif/1]).
+         remove_prims/1, bif/1, parallel_map/2]).
 
 
 basis() ->
@@ -72,18 +72,23 @@ map_proc([Fn, {list, Ls}], Env) ->
     {{list, Results}, Env}.
 
 
+newrandom() ->
+    random:uniform(1000000).
+
+
 parallel_map(Fun, List) ->
+    Id = newrandom(),
     Last = lists:foldl(fun(Value, Parent) ->
           spawn(fun() ->
               MappedValue = Fun(Value),
               receive
-                  Rest -> Parent ! [MappedValue|Rest]
+                  {pmap, AnId, Rest} -> Parent ! {pmap, AnId, [MappedValue|Rest]}
               end
           end)
     end, self(), List),
-    Last ! [],
+    Last ! {pmap, Id, []},
     receive
-        Result -> Result
+        {pmap, _AnId, Result} -> Result
     end.
 
 
