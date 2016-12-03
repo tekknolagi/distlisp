@@ -3,6 +3,7 @@
 -export([lookup/2, bind/3, extend/2, extend/3]).
 -export([printexp/1]).
 -export([type/1]).
+-export([tuplezip/2]).
 
 -export([name_free/2]).
 

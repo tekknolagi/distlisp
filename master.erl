@@ -109,10 +109,12 @@ parallel_map_rr(IdServer, [{Exp,Env}|T], ProcQueue) ->
 
 parallel_map(IdServer, WorkPackets, Processes, roundrobin) ->
    Avengers = parallel_map_rr(IdServer, WorkPackets, Processes),
-    assemble(Avengers);
+   IdValPairs = assemble(Avengers),
+    lists:map(fun({Id, Val}) -> Val end, IdValPairs);
 parallel_map(IdServer, WorkPackets, Machines, memroundrobin) ->
    Avengers = parallel_map_memrr(IdServer, WorkPackets, Machines),
-   assemble(Avengers).
+   IdValPairs =  assemble(Avengers),
+   lists:map(fun({Id, Val}) -> Val end, IdValPairs).
 %parallel_map(IdServer, WorkPackets, Machines, timed) ->
 %   
        
