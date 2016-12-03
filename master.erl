@@ -98,12 +98,8 @@ parallel_map_memrr(IdServer, [{Exp, Env}|T], Machines) ->
 parallel_map_rr(_IdServer, [], _MachineQueue) -> [];
 parallel_map_rr(IdServer, [{Exp,Env}|T], ProcQueue) ->
     {Proc, NewProcQueue} = thread_pool:next_node(ProcQueue),
-    %Master = self(),
-    %Apply = fun() ->
-                    FreshId = freshid(IdServer),
-                    Proc ! {delegate, FreshId, Exp, Env},
-                    io:format("Delegated packet ~p ~n", [FreshId]),
-    %        end,
+    FreshId = freshid(IdServer),
+    Proc ! {delegate, FreshId, Exp, Env},
     [FreshId|parallel_map_rr(IdServer, T, NewProcQueue)].
 
 

@@ -8,10 +8,7 @@ waitforwork(Agent) ->
     receive
         {work, Master, {Id, Exp, Env}} ->
             {Val, _} = eval:evalexp(Exp, Env),
-            io:format("Worker Received and evaluated work~n"),
-            io:format("Master PID frok worker Perp:  ~p~n", [Master]),
             Master ! {result, Id, Val},
-            io:format("Work sent to Master allegedly~n");
 
         nothing_yet ->
             timer:sleep(100);

@@ -39,7 +39,7 @@ add(Nodes, NumNodes) when NumNodes > 0 ->
 add(Nodes) ->
     add(Nodes, 1).
 
-percore() -> 5.
+percore() -> 2000.
 
 calculate1() ->
    {Total, Alloc, _} = memsup:get_memory_data(),
@@ -74,7 +74,6 @@ init_workers (Master, CalcAlg) ->
     1 -> create(calculate1());
     2 -> create(calculate2())
   end,
-  io:format("Master is ~p in init_workers~n", [Master]),
   lists:map(fun(Agent) -> Agent ! {master, Master} end,
             queue:to_list(ThreadPool)),
   Master ! {workers, ThreadPool}.
