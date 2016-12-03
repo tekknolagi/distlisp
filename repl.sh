@@ -1,2 +1,2 @@
 #!/bin/bash
-erl -pa ./repl.erl -run repl main -run init stop -noshell
+erl -setcookie dlisp -pa ./repl.erl -run repl main -run init stop -noshell
