@@ -8,9 +8,13 @@ waitforwork(Agent) ->
     receive
         {work, Master, {Id, Exp, Env}} ->
             {Val, _} = eval:evalexp(Exp, Env),
-            Master ! {result, Id, Val};
+            io:format("Worker Received and evaluated work~n"),
+            io:format("Master PID frok worker Perp:  ~p~n", [Master]),
+            Master ! {result, Id, Val},
+            io:format("Work sent to Master allegedly~n");
+
         nothing_yet ->
-            timer:sleep(5000);
+            timer:sleep(100);
         What ->
             io:format("Received invalid response of ~p~n", [What])
     end,

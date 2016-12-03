@@ -19,8 +19,8 @@ connect_worker_nodes([H | T], Type) ->
       bymachine ->
             %% TODO: give algorithm
         _InitPid = spawn(H, thread_pool, init_machine, [self(), 1]),
-        receive {Pid, Workers, SysCpu, SysMem} ->
-          [ {H, Pid, Workers, SysCpu, SysMem} |  connect_worker_nodes(T, Type)]
+        receive {Pid, Workers, SysCpu, {Total, Alloc, Worst}} ->
+          [ {H, Pid, Workers, SysCpu, Total - Alloc} |  connect_worker_nodes(T, Type)]
         end;
       flat ->
             %% TODO: give algorithm
@@ -38,13 +38,25 @@ connect_worker_nodes([H | T], Type) ->
 pollhealth([]) -> [];
 pollhealth([{Node, Pid, ThreadPool, SysCpu, SysMem}|T]) ->
     Pid ! system_check,
-    receive {Pid, SysCpu, SysMem} ->
-       [{Node, Pid, ThreadPool, SysCpu, SysMem} | pollhealth(T)]
+    receive {Pid, SysCpu, {Total, Alloc, Worst}} ->
+       [{Node, Pid, ThreadPool, SysCpu, Total - Alloc} | pollhealth(T)]
     after 100 -> 
        [{timeout, Node} | pollhealth(T)]
     end;
 pollhealth(_) -> error.
 
+timed_pollhealth([]) -> [];
+timed_pollhealth([{Node, Pid, ThreadPool, SysCpu, SysMem}|T]) ->
+   PrevTime = erlang:system_time(),
+   Pid ! system_check,
+   receive {Pid, SysCpu, {Total, Alloc, Worst}} ->
+      [{Node, Pid, ThreadPool, SysCpu, SysMem, erlang:system_time() - PrevTime} 
+      | timed_pollhealth(T)]
+   after 100 ->
+      [{Node, Pid, ThreadPool, SysCpu, SysMem, 10000000000}
+       | timed_pollhealth(T)]
+   end;
+timed_pollhealth(_) -> error.
 
 idserver() ->
     idserver(0).
@@ -61,6 +73,28 @@ freshid(IdServer) ->
         {fresh_id, FreshId} -> FreshId
     end.
 
+parallel_map_timed(_IdServer, [], _Machines) -> [];
+parallel_map_timed(IdServer, [{Exp, Env}|T], Machines) ->
+  Ms = timed_pollhealth(Machines),
+  [{Node, Pid, Workers, Cpu, Mem, Time}|T] = lists:keysort(6, Ms),
+  FreshId = freshid(IdServer),
+  Worker = queue:get(Workers),
+  Worker ! {delegate, FreshId, Exp, Env},
+  queue:in(Worker, Workers),
+  [{FreshId, Worker, Time} | parallel_map_timed(IdServer, T, Ms)].
+   
+
+parallel_map_memrr(_IdServer, [], _Procs) -> [];
+parallel_map_memrr(IdServer, [{Exp, Env}|T], Machines) ->
+    [{Node, Pid, Workers, Cpu, Mem} | Ms] = lists:keysort(5, Machines),
+    FreshId = freshid(IdServer),
+    Worker = queue:get(Workers),
+    Worker ! {delegate, FreshId, Exp, Env},
+    queue:in(Worker, Workers),
+    NewMs = pollhealth(Machines),
+   [FreshId | parallel_map_memrr(IdServer, T, NewMs)].
+
+
 parallel_map_rr(_IdServer, [], _MachineQueue) -> [];
 parallel_map_rr(IdServer, [{Exp,Env}|T], ProcQueue) ->
     {Proc, NewProcQueue} = thread_pool:next_node(ProcQueue),
@@ -73,11 +107,17 @@ parallel_map_rr(IdServer, [{Exp,Env}|T], ProcQueue) ->
     [FreshId|parallel_map_rr(IdServer, T, NewProcQueue)].
 
 
-parallel_map(IdServer, WorkPackets, Processes, Type) ->
-    case Type of roundrobin ->
-       Avengers = parallel_map_rr(IdServer, WorkPackets, Processes),
-       assemble(Avengers)
-    end. %% Really, they are pids.
+parallel_map(IdServer, WorkPackets, Processes, roundrobin) ->
+   Avengers = parallel_map_rr(IdServer, WorkPackets, Processes),
+    assemble(Avengers);
+parallel_map(IdServer, WorkPackets, Machines, memroundrobin) ->
+   Avengers = parallel_map_memrr(IdServer, WorkPackets, Machines),
+   assemble(Avengers).
+%parallel_map(IdServer, WorkPackets, Machines, timed) ->
+%   
+       
+%     end,
+%    assemble(Avengers). %% Really, they are pids.
 
 
 assemble([]) -> [];
@@ -97,8 +137,8 @@ test(Machines) ->
     %WorkPacket = {SimpleExp, StartingEnv},
     io:format("Calling pmap...~n"),
     Pids = master:connect_worker_nodes(Machines, flat),
-    WP = [{[{sym, binplus}, {int, 3},{int, 3}], StartingEnv},
-          {[{sym, binplus}, {int, 5}, {int, 5}], StartingEnv}],
+    WP = [{{list, [{sym, binplus}, {int, 3},{int, 3}]}, StartingEnv},
+          {{list, [{sym, binplus}, {int, 5}, {int, 5}]}, StartingEnv}],
     io:format("Currently connected to: ~p~n", [nodes()]),
                     %WorkPkt = {work, Master, freshid(IdServer), Work},
                     %Machine ! {delegate, WorkPkt},
