@@ -14,30 +14,34 @@ shuffle(Ls) ->
 %%%
 %%%  Need to implement schemes besides round robin
 
-connect_worker_nodes([], bymachine, _) -> [];
-connect_worker_nodes([], flat, _) -> queue:from_list([]);
-connect_worker_nodes([H | T], Type, Alg) ->
+connect_worker_nodes([], bymachine, _) -> {[], []} ;
+connect_worker_nodes([], flat, _) -> {[], queue:new()};
+connect_worker_nodes([H|T], flat, Alg) ->
   Comp = net_kernel:connect_node(H),
   if Comp ->
-    case Type of
-      bymachine ->
-        _InitPid = spawn(H, thread_pool, init_machine, [self(), Alg]),
-        Prev  = erlang:system_time(),
-        receive {Pid, Workers, SysCpu, {Total, Alloc, _Worst}} ->
-          Recvd = erlang:system_time(),
-          [ {H, Pid, Workers, SysCpu, Total - Alloc, Recvd-Prev}
-             |  connect_worker_nodes(T, Type, Alg)]
-        end;
-      flat ->
-        _InitPid = spawn(H, thread_pool, init_workers, [self(), Alg]),
-        receive {workers, Threads} ->
-          RList = queue:to_list(queue:join(Threads, connect_worker_nodes(T, Type, Alg))),
-          queue:from_list(shuffle(RList))
-        end
-     end;
-     true ->
-       error
+    _InitPid = spawn(H, thread_pool, init_workers, [self(), Alg]),
+    receive {workers, Threads} ->
+      {_OldList, OldQueue} = connect_worker_nodes(T, flat, Alg),
+      RList = queue:to_list(queue:join(Threads, OldQueue)),
+      Queue = queue:from_list(shuffle(RList)),
+      {RList, Queue}
+    end;
+  true -> error(net_kernel_screwed_up)
+  end;
+
+connect_worker_nodes([H|T], bymachine, Alg) ->
+  Comp = net_kernel:connect_node(H),
+  if Comp ->
+    _InitPid = spawn(H, thread_pool, init_machine, [self(), Alg]),
+    Prev = erlang:system_time(),
+    receive {Pid, Workers, Cpu, {Total, Alloc, _Worst}} ->
+      Recvd = erlang:system_time(),
+      {WList, Ms} = connect_worker_nodes(T, bymachine, Alg),
+      {Workers ++ WList, [{H, Pid, Workers, Cpu, Total-Alloc, Recvd-Prev}|Ms]}
+    end;
+  true ->  error(net_kernel_screwed_up)
   end.
+
   
 
 timed_pollhealth([]) -> [];
