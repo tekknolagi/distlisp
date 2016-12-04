@@ -55,7 +55,7 @@ agent_loop(Worker, Master, WorkQueue, OtherAgents) ->
                             Requester ! nothing_yet,
                             agent_loop(Worker, Master, WorkQueue, OtherAgents);
                         {{value, FirstAgent}, NewAgentQueue} ->
-                            checkforwork(FirstAgent, Requester).
+                            checkforwork(FirstAgent, Requester),
                             agent_loop(Worker, Master, WorkQueue,
                                        queue:in(FirstAgent, NewAgentQueue))
                    end;
