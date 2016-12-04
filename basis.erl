@@ -106,12 +106,13 @@ dmap_proc([Fn, {list, Ls}], Env) ->
     % Map = fun lists:map/2,
     IdServer = eval:lookup('__idserver', Env),
     AgentStore = eval:lookup('__agents', Env),
+    DistMode = eval:lookup('__distmode', Env),
     FnApplications = lists:map(fun (Exp) ->
                                        {list, [Fn, Exp]}
                                end, Ls),
     Envs = lists:duplicate(length(Ls), Env),
     WorkPackets = eval:tuplezip(FnApplications, Envs),
-    Results = master:parallel_map(IdServer, WorkPackets, AgentStore, roundrobin),
+    Results = master:parallel_map(IdServer, WorkPackets, AgentStore, DistMode),
     {{list, Results}, Env}.
 
 
