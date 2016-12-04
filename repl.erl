@@ -6,10 +6,11 @@ shuffle(Ls) ->
     [X||{_,X} <- lists:sort([ {rand:uniform(), N} || N <- Ls])].
 
 main([]) -> usage();
-main(Machines) when is_list(Machines) ->
+main([_Mode]) -> usage();
+main([Mode|Machines]) when is_list(Machines) ->
     erlang:set_cookie(node(), dlisp),
     IdServer = spawn(fun master:idserver/0),
-    {FlatAgentList, AgentStore} = master:connect_worker_nodes(Machines, flat, 2),
+    {FlatAgentList, AgentStore} = master:connect_worker_nodes(Machines, Mode, 2),
     Map = fun basis:parallel_map/2,
     Map(fun(Agent) ->
                 % Don't let the agent request work from itself.
@@ -25,5 +26,5 @@ main(Machines) when is_list(Machines) ->
 main(_) -> usage().
 
 usage() ->
-    io:format("usage: ./repl.erl [machineA [machine B [...]]]\n"),
+    io:format("usage: ./repl.erl mode machineA [machine B [...]]\n"),
     halt(1).
