@@ -3,7 +3,7 @@
 
 % http://stackoverflow.com/questions/8817171
 shuffle(Ls) ->
-    [X||{_,X} <- lists:sort([ {random:uniform(), N} || N <- Ls])].
+    [X||{_,X} <- lists:sort([ {rand:uniform(), N} || N <- Ls])].
 
 main([]) -> usage();
 main(Machines) when is_list(Machines) ->
