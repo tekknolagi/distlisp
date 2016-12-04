@@ -9,7 +9,7 @@ main([]) -> usage();
 main(Machines) when is_list(Machines) ->
     erlang:set_cookie(node(), dlisp),
     IdServer = spawn(fun master:idserver/0),
-    Agents = master:connect_worker_nodes(Machines, flat),
+    Agents = master:connect_worker_nodes(Machines, flat, 2),
     AgentList = queue:to_list(Agents),
     lists:map(fun(Agent) ->
                       % Don't let the agent request work from itself.
