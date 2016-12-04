@@ -2,6 +2,10 @@
 -export([connect_worker_nodes/3, timed_pollhealth/1, parallel_map/4]).
 -export([idserver/0, freshid/1, test_rr/1, test_mrr/1, test_timed/1]).
 
+
+shuffle(Ls) ->
+   [X || {_, X} <- lists:sort([ {random:uniform(), N} || N <- Ls])].
+
 %%%% Need a requeue function to re-assign dead IDs
 %%%
 %%%  Need wways to assign IDs
@@ -27,7 +31,8 @@ connect_worker_nodes([H | T], Type, Alg) ->
       flat ->
         _InitPid = spawn(H, thread_pool, init_workers, [self(), Alg]),
         receive {workers, Threads} ->
-           queue:join(Threads,connect_worker_nodes(T, Type, Alg))
+          RList = queue:to_list(queue:join(Threads, connect_worker_nodes(T, Type, Alg))),
+          queue:from_list(shuffle(RList))
         end
      end;
      true ->

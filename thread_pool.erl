@@ -39,7 +39,7 @@ add(Nodes, NumNodes) when NumNodes > 0 ->
 add(Nodes) ->
     add(Nodes, 1).
 
-percore() -> 5.
+percore() -> 2000.
 
 calculate1() ->
    {Total, Alloc, _} = memsup:get_memory_data(),
