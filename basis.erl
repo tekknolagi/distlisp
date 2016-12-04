@@ -218,10 +218,13 @@ timerend() ->
     % Times in ms.
     {cpu, Time1, wall, Time2}.
 
+mklist(Ls) when is_list(Ls) ->
+    {list, Ls}.
+
 time_proc([Exp], Env) ->
     timerstart(),
     {_Val, _} = eval:evalexp(Exp, Env),
     {cpu, Time1, wall, Time2} = timerend(),
-    Diff = {list, [{sym,cpu}, {int,Time1}, {sym,ms},
-                   {sym,wall}, {int,Time2}, {sym,ms}]},
+    Diff = mklist([mklist([{sym,cpu}, {int,Time1}, {sym,ms}]),
+                   mklist([{sym,wall}, {int,Time2}, {sym,ms}])]),
     {Diff, Env}.
