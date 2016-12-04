@@ -4,7 +4,7 @@
          not_proc/2, and_proc/2, or_proc/2, cons_proc/2, car_proc/2,
          cdr_proc/2, worker_proc/2, check_expect/2, save_state/2, load_state/2,
          print_proc/2, compile_proc/2, env_proc/2, class_proc/2, time_proc/2,
-         remove_prims/1, bif/1, parallel_map/2]).
+         remove_prims/1, bif/1, parallel_map/2, timerstart/0, timerend/0]).
 
 
 basis() ->
@@ -208,12 +208,20 @@ env_proc([], Env) ->
 class_proc([Name, Parent], Env) ->
     {{list, [Name, Parent]}, Env}.
 
-time_proc([Exp], Env) ->
+timerstart() ->
     statistics(runtime),
-    statistics(wall_clock),
-    {_Val, _} = eval:evalexp(Exp, Env),
+    statistics(wall_clock).
+
+timerend() ->
     {_, Time1} = statistics(runtime),
     {_, Time2} = statistics(wall_clock),
+    % Times in ms.
+    {cpu, Time1, wall, Time2}.
+
+time_proc([Exp], Env) ->
+    timerstart(),
+    {_Val, _} = eval:evalexp(Exp, Env),
+    {cpu, Time1, wall, Time2} = timerend(),
     Diff = {list, [{sym,cpu}, {int,Time1}, {sym,ms},
                    {sym,wall}, {int,Time2}, {sym,ms}]},
     {Diff, Env}.

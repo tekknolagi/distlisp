@@ -58,6 +58,7 @@ agent_loop(Worker, Master, WorkQueue, OtherAgents) ->
         {request_for_work, Requester} ->
             case queue:out(WorkQueue) of
                 {empty, WorkQueue} ->
+                    basis:timerstart(),
                     case queue:out(OtherAgents) of
                         {empty, OtherAgents} ->
                             Requester ! nothing_yet,
@@ -65,12 +66,14 @@ agent_loop(Worker, Master, WorkQueue, OtherAgents) ->
                         {{value, FirstAgent}, NewAgentQueue} ->
                             case checkforwork(FirstAgent) of
                                 nothing_yet ->
+                                    basis:timerend(),
                                     Requester ! nothing_yet;
                                 {work,_,_}=Work ->
+                                    io:format("Overhead is ~p~n", [basis:timerend()]),
                                     Requester ! Work
                             end,
-                           agent_loop(Worker, Master, WorkQueue,
-                                      queue:in(FirstAgent, NewAgentQueue))
+                            agent_loop(Worker, Master, WorkQueue,
+                                       queue:in(FirstAgent, NewAgentQueue))
                    end;
                 {{value, NextItem}, NewWorkQueue} ->
                     Requester ! NextItem,
