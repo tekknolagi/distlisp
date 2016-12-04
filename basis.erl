@@ -74,7 +74,7 @@ map_proc([Fn, {list, Ls}], Env) ->
 
 
 newrandom() ->
-    random:uniform(1000000).
+    rand:uniform(1000000).
 
 
 parallel_map(Fun, List) ->
