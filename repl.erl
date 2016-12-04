@@ -9,19 +9,18 @@ main([]) -> usage();
 main(Machines) when is_list(Machines) ->
     erlang:set_cookie(node(), dlisp),
     IdServer = spawn(fun master:idserver/0),
-    Agents = master:connect_worker_nodes(Machines, flat, 2),
-    AgentList = queue:to_list(Agents),
+    {FlatAgentList, AgentStore} = master:connect_worker_nodes(Machines, flat, 2),
     Map = fun basis:parallel_map/2,
     Map(fun(Agent) ->
                 % Don't let the agent request work from itself.
-                OtherAgents = AgentList -- [Agent],
+                OtherAgents = FlatAgentList -- [Agent],
                 % And randomize the list so they don't all kill one node
                 % at a time.
                 Agent ! {other_agents, shuffle(OtherAgents)}
-        end, AgentList),
+        end, FlatAgentList),
     StartingEnv = eval:bind('__idserver', IdServer,
-                            eval:bind('__agents', Agents,
-                                      basis:basis())),
+                  eval:bind('__agents', AgentStore,
+                            basis:basis())),
     reader:repl(1, StartingEnv);
 main(_) -> usage().
 

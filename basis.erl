@@ -105,13 +105,13 @@ pmap_proc([Fn, {list, Ls}], Env) ->
 dmap_proc([Fn, {list, Ls}], Env) ->
     % Map = fun lists:map/2,
     IdServer = eval:lookup('__idserver', Env),
-    Agents = eval:lookup('__agents', Env),
+    AgentStore = eval:lookup('__agents', Env),
     FnApplications = lists:map(fun (Exp) ->
                                        {list, [Fn, Exp]}
                                end, Ls),
     Envs = lists:duplicate(length(Ls), Env),
     WorkPackets = eval:tuplezip(FnApplications, Envs),
-    Results = master:parallel_map(IdServer, WorkPackets, Agents, roundrobin),
+    Results = master:parallel_map(IdServer, WorkPackets, AgentStore, roundrobin),
     {{list, Results}, Env}.
 
 
