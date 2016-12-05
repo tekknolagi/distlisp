@@ -5,7 +5,8 @@
 shuffle(Ls) ->
     [X||{_,X} <- lists:sort([ {rand:uniform(), N} || N <- Ls])].
 
-main([]) -> usage();
+main([]) ->
+    reader:repl(1, basis:basis());
 main([InitMode|[DistMode|Machines]]) when is_list(Machines) ->
     erlang:set_cookie(node(), dlisp),
     IdServer = spawn(fun master:idserver/0),
@@ -21,7 +22,7 @@ main([InitMode|[DistMode|Machines]]) when is_list(Machines) ->
         end, FlatAgentList),
     StartingEnv = eval:bind('__idserver', IdServer,
                   eval:bind('__agents', AgentStore,
-                  eval:bind('__distmode', DistMode,
+                  eval:bind('__distmode', {sym, DistMode},
                             basis:basis()))),
     reader:repl(1, StartingEnv);
 main(_) -> usage().

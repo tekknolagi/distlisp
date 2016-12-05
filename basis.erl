@@ -106,7 +106,7 @@ dmap_proc([Fn, {list, Ls}], Env) ->
     % Map = fun lists:map/2,
     IdServer = eval:lookup('__idserver', Env),
     AgentStore = eval:lookup('__agents', Env),
-    DistMode = eval:lookup('__distmode', Env),
+    {sym, DistMode} = eval:lookup('__distmode', Env),
     FnApplications = lists:map(fun (Exp) ->
                                        {list, [Fn, Exp]}
                                end, Ls),
