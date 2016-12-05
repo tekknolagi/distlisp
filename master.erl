@@ -36,8 +36,9 @@ connect_worker_nodes([H|T], bymachine, Alg) ->
     Prev = erlang:system_time(),
     receive {Pid, Workers, Cpu, {Total, Alloc, _Worst}} ->
       Recvd = erlang:system_time(),
+      WorkerList = queue:to_list(Workers),
       {WList, Ms} = connect_worker_nodes(T, bymachine, Alg),
-      {Workers ++ WList, [{H, Pid, Workers, Cpu, Total-Alloc, Recvd-Prev}|Ms]}
+      {WorkerList ++ WList, [{H, Pid, Workers, Cpu, Total-Alloc, Recvd-Prev}|Ms]}
     end;
   true ->  error(net_kernel_screwed_up)
   end.
