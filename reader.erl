@@ -10,24 +10,22 @@ read_program(file, FileName) ->
     {ok, Data} = file:read_file(FileName),
     read_program(string, binary:bin_to_list(Data)).
 
-next_token() ->
+read_term(Acc) ->
     case io:request(standard_io, {get_until, '', scanner, token, [1]}) of
-        {ok, Tok, _} -> Tok;
-        {error, Reason, Line} -> error({syntax_error, {Reason, Line}})
+        {ok, EndToken={';;', _}, _} -> Acc ++ [EndToken];
+        {ok, Token, _} -> read_term(Acc ++ [Token]);
+        {error, token} -> {error, scanning_error};
+        {eof, _} -> Acc
     end.
-
-
-read_term() ->
-    case next_token() of
-        % TODO: fix. Hacky.
-        end_token -> [{';',1}];
-        Tok -> [Tok|read_term()]
-    end.
+read_term() -> read_term([]).
 
 eval_input(Env) ->
-     Tokens = read_term(),
-     {ok, {prog, Prog}} = parser:parse(Tokens),
-     eval:evalexp(Prog, Env).
+    case read_term() of
+        {error, Reason} -> error({syntax_error, Reason});
+        Tokens ->
+            {ok, {prog, Prog}} = parser:parse(Tokens),
+            eval:evalexp(Prog, Env)
+    end.
 
 -define(NEXT, reader:repl(Num+1, Env)).
 -define(NEXTWITHIT, reader:repl(Num+1, eval:bind(it, Val, NewEnv))).
