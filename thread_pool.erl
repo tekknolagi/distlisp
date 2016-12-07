@@ -4,14 +4,17 @@
          loop/1, calculate1/0, calculate2/0, reap/3]).
 
 
+newagent(Server, Modes) ->
+    spawn(Server, stealingworker, agent_loop, [Modes]).
+
 newagent(Server) ->
-    spawn(Server, stealingworker, agent_loop, []).
+    newagent(Server, {fullspeed, stealing}).
 
 
-create(0, _ServerPool, t) -> queue:from_list([]);%erlang:error(invalid_num_node);
+create(0, _ServerPool, t) -> queue:from_list([]);
 
 create(1, ServerPool, t) -> {NextServer, _NewPool} = next_node(ServerPool),
-                            Agent = newagent(NextServer),
+                            Agent = newagent(NextServer, {slow, stealing}),
                             queue:from_list([Agent]);
 
 create(NumNodes, ServerPool, t) when NumNodes > 1 ->
