@@ -10,25 +10,21 @@ read_program(file, FileName) ->
     {ok, Data} = file:read_file(FileName),
     read_program(string, binary:bin_to_list(Data)).
 
-getchar(eof) -> throw(eof);
-getchar([C]) -> C.
-getchar() -> getchar(io:get_chars("", 1)).
-
-read_term() ->
-    case getchar() of
-        $; -> ";";
-        C -> [C|read_term()]
+read_term(Acc) ->
+    case io:request(standard_io, {get_until, '', scanner, token, [1]}) of
+        {ok, EndToken={';;', _}, _} -> Acc ++ [EndToken];
+        {ok, Token, _} -> read_term(Acc ++ [Token]);
+        {error, token} -> {error, scanning_error};
+        {eof, _} -> Acc
     end.
+read_term() -> read_term([]).
 
 eval_input(Env) ->
-    Text = read_term(),
-    % Strip all leading whitespace.
-    RStripped = re:replace(Text, "^\\s+", "", [global,{return,list}]),
-    case RStripped of
-        % Don't bother printing a prompt if there's nothing to do.
-        [] -> throw(nothing);
-        _ -> Prog = read_program(string, RStripped),
-             eval:evalexp(Prog, Env)
+    case read_term() of
+        {error, Reason} -> error({syntax_error, Reason});
+        Tokens ->
+            {ok, {prog, Prog}} = parser:parse(Tokens),
+            eval:evalexp(Prog, Env)
     end.
 
 -define(NEXT, reader:repl(Num+1, Env)).
@@ -68,8 +64,8 @@ repl(Num, Env, ShouldPrint) ->
             io:format("ERROR: Type mismatch: ~p~n", [G]),
             ?NEXT;
         error:{syntax_error, Reason} ->
-            io:format("ERROR: ~p~n", [Reason]),
-            ?NEXT;
+            io:format("ERROR: ~p~n", [Reason]);
+            % ?NEXT;
         error:{tuplezip_mismatch, _, _} ->
             io:format("ERROR: Wrong number of arguments~n"),
             ?NEXT

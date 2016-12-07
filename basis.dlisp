@@ -79,4 +79,4 @@ fun reverse(xs) =
          revapp(xs, nil)
     end;
 
-fun list(...) = reverse(foldl(cons, nil, ...));
+fun list(...) = reverse(foldl(cons, nil, ...));;

@@ -1,12 +1,12 @@
 -module(repl).
--export([main/1]).
+-export([main/1,main/0]).
 
 % http://stackoverflow.com/questions/8817171
 shuffle(Ls) ->
     [X||{_,X} <- lists:sort([ {rand:uniform(), N} || N <- Ls])].
 
-main([]) ->
-    reader:repl(1, basis:basis());
+main() ->
+    reader:repl(1, basis:basis()).
 main([InitMode|[DistMode|Machines]]) when is_list(Machines) ->
     erlang:set_cookie(node(), dlisp),
     IdServer = spawn(fun master:idserver/0),

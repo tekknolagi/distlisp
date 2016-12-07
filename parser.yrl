@@ -5,7 +5,7 @@ letkind lambda lisplist opfn oper unaryoper quotable.
 Terminals
 sym int bool ';' '=' '(' ')' ',' '[' ']' 'in' 'let' 'let*' 'end' '*' '+' '/'
 '-' '>' '<' '<=' '>=' '==' 'and' 'or' 'not' '!' '\'' 'val' 'fun' 'if' 'then'
-'else' 'fn' 'op'.
+'else' 'fn' 'op' ';;'.
 
 Rootsymbol prog.
 
@@ -25,7 +25,7 @@ Left 500 '=='.
 Left 600 'and'.
 Left 600 'or'.
 
-prog -> explist : {prog, '$1'}.
+prog -> explist ';;' : {prog, '$1'}.
 
 define ->
     'fun' name '(' arglist ')' '=' exp : mklist([{sym,'define'}, '$2', mklist('$4'), '$7']).
@@ -35,7 +35,7 @@ define ->
 funcall -> name '(' ')' : mklist(['$1']).
 funcall -> name '(' arglist ')': mklist(['$1'|'$3']).
 
-explist -> exp ';' : ['$1'].
+explist -> exp : ['$1'].
 explist -> exp ';' explist : ['$1'|'$3'].
 
 arglist -> exp : ['$1'].
