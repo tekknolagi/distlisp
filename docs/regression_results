@@ -1,0 +1,24 @@
+Call:
+lm(formula = Speed ~ MapType * WorkStealing * PctSlow, data = res)
+
+Residuals:
+      1       2       3       4       5       6       7       8       9      10      11      13 
+ -116.7  -111.7   223.3  -111.7   233.3  -116.7  -338.2 -4849.7  2424.8   676.3  -338.2  2424.8 
+
+Coefficients:
+                                         Estimate Std. Error t value Pr(>|t|)  
+(Intercept)                                 12476       2743   4.548   0.0104 *
+MapTypeRound Robin                          -4140       3880  -1.067   0.3461  
+WorkStealingY                                -654       3880  -0.169   0.8743  
+PctSlow                                      3299       4250   0.776   0.4809  
+MapTypeRound Robin:WorkStealingY            -1418       5486  -0.258   0.8088  
+MapTypeRound Robin:PctSlow                  -5709       6010  -0.950   0.3960  
+WorkStealingY:PctSlow                       10750       6010   1.789   0.1482  
+MapTypeRound Robin:WorkStealingY:PctSlow    -7526       8500  -0.885   0.4259  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 3005 on 4 degrees of freedom
+  (2 observations deleted due to missingness)
+Multiple R-squared:  0.9202,	Adjusted R-squared:  0.7806 
+F-statistic: 6.592 on 7 and 4 DF,  p-value: 0.04374
