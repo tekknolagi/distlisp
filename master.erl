@@ -74,6 +74,7 @@ delegator(Modes) ->
 delegator(Modes={DistMode}, IdServer, Machines, FlatAgentsList, FlatAgentsQueue) ->
     receive
         {register, Pid, Name, Cpu, {Total, Alloc, _Worst}, AgentsQueue} ->
+            io:format("Machine ~p has joined the pool.~n", [Name]),
             AgentsList = queue:to_list(AgentsQueue),
             NewAgentsList = AgentsList ++ FlatAgentsList,
             NewAgentsQueue = queue:join(AgentsQueue, FlatAgentsQueue),
