@@ -1,0 +1,15 @@
+﻿pmap Type,worker stealing?,Pct Slow Workers,Avg,Std
+Round Robin,N,1,5810,68
+Round Robin,Y,0,6153,512
+Round Robin,Y,0.5,6895,312
+Round Robin,Y,1,6967,809
+Round Robin,N,0.5,7365,863
+Round Robin,N,0,8220,1264
+Low Latency,N,0,12138,467
+Low Latency,Y,0.5,13997,132
+Low Latency,Y,0,14247,184
+Low Latency,N,0.5,14802,658
+Low Latency,N,1,15437,583
+Parallel Map Local,NA,NA,20869,490
+Low Latency,Y,1,28296,382
+Normal Map,NA,NA,39753,289
