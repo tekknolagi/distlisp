@@ -175,7 +175,8 @@ to resolve, and evaluating sequentially wastes scheduling time for no discernibl
 
 The function 'dmap' in dlisp works semantically just like pmap. However, under the hood, 
 a significant amount is different. There are three possible methods of distributed map:
-Round Robin, Low Latency, and By Memory.
+Round Robin, Low Latency, and By Memory. Each of these is a different load balancing technique
+that aims to distribute work in the most efficient way possible.
 
 \subsubsection{Round Robin}
 
@@ -208,6 +209,33 @@ the Master waits for each packet to return before in order returning the collate
 \subsection{By Memory}
 
 The By Memory scheme is similar to low latency, except in this case available memory is prioritized.
-Much like in the low latency scheme, initialization occurs by 
+Much like in the low latency scheme, initialization occurs by machine, such that each machine, when it
+connects, sends its worker queue and statistics and is represented in a list of Machines by master having its
+own distinct WorkerQueue. For each element in the list, the corresponding WorkPacket is sent to the
+machine that presents as having the most available memory. Machines are polled through each iteration of this
+process. By Memory was the scheme we tested the least, because it was difficult to contrive scenarios of
+heterogeneity between machines in terms of memory usage in the scope of the time we were given.
+
+\subsection{Work Stealing}
+
+A major component in how we distributed work is through work stealing. The principle of work stealing is that
+when certain processes are busy, others can take on more work. This is a way to augment the load balancing above
+in having a failsafe in case a process or processes stall on work. In order to accomplish this, when we create worker
+processes on a node, these are actually pairs of Workers and Agents, which were briefly defined above. The motivation is
+that the worker simply waits for work, performs the work when the work order is received and returns it, then repeats ad
+infinitum. The Agent, however, is the point-of-contact for the worker and anyone who wishes to send it work. It is called
+an agent because it behaves like an agent for an actress, sports player, or celebrity: the worker does the work, and the agent
+manages the worker and gives it work from outside sources. The list of processes inside of Master is a list of agents, in reality.
+The Master sends the Agent work, who passes it along to the worker or builds up a queue of jobs for the worker to do.
+The Agent also feverishly negotiates, sending messages to all of the other agents asking to steal work from their queue
+when the worker is idle. This setup allows for any inefficiencies in the system to be mitigated for. If in the low latency scheme
+there is one clear favorite machine, its scheduler may be bogged down with potentially high-powered jobs. While it is processing
+work, an Agent on another machine can steal from the queues being built up by the agents on the lowest latency machine. To the Master,
+this is irrelevant, but it allows for work to get done as fast as possible with little central micromanagement.
+
+\section{Results}
+
+\section{Conclusion}
+
 
 \end{document}
