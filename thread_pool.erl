@@ -1,35 +1,33 @@
 -module(thread_pool).
--export([create/2, next_node/1, add/1, add/2]).
+-export([create/2, add/1, add/2]).
 -export([waitforwork/0, loop/1, calculate1/0, calculate2/0, reap/3]).
--export([selfstart/4]).
+-export([selfstart/3]).
 
 
-selfstart(MasterNode, CalcAlg, AgentOpts, Last, Type) ->
-   Comp =  net_kernel:connect_node(MasterNode),
-   if Comp ->
-      application:start(sasl),
-      application:start(os_mon),
-      NumProcs = case CalcAlg of 
-         1 -> calculate1();
-         2 -> calculate2()
-      end,
+selfstart(MasterNode, CalcAlg, AgentOpts) ->
+    Comp = net_kernel:connect_node(MasterNode),
+    case Comp of
+        true ->
+           application:start(sasl),
+           application:start(os_mon),
+           NumProcs = case CalcAlg of 
+                          1 -> calculate1();
+                          2 -> calculate2()
+                      end,
 
-      ThreadPool = create(NumProcs, AgentOpts),
-      
-      lists:map(fun(Agent) -> Agent ! {master, {MasterNode, MasterNode}} end,
-           queue:to_list(ThreadPool)),
+           AgentsQueue = create(NumProcs, AgentOpts),
+           AgentsList = queue:to_list(AgentsQueue),
 
-     case Type of 
-      bymachine ->
-        {MasterNode, MasterNode} ! {Last, node(), self(),
-           erlang:system_info(logical_processors_available),
-           memsup:get_memory_data()};
-      flat ->
-        {MasterNode, MasterNode} ! {Last, node(), self(), ThreadPool}
-     end;
-     true ->
-        error
-     end.
+           lists:map(fun(Agent) ->
+                             Agent ! {master, MasterNode},
+                             Agent ! {other_agents, AgentsQueue} 
+                     end, AgentsList),
+
+           {master, MasterNode} ! {register, self(), node(),
+                                   erlang:system_info(logical_processors_available),
+                                   memsup:get_memory_data(), AgentsQueue};
+        false -> error({selfstart, masterconnect_failed})
+    end.
 
 
 newagent(Server, Modes) ->
@@ -39,34 +37,22 @@ newagent(Server) ->
     newagent(Server, {fullspeed, stealing}).
 
 
-create(0, _ServerPool, AgentOpts, t) -> queue:from_list([]);
+create(0, _Modes) -> queue:new();
 
 %create(1, ServerPool, AgentOpts, t) ->
 %    {NextServer, _NewPool} = next_node(ServerPool),
 %    Agent = newagent(NextServer, AgentOpts),
 %    queue:from_list([Agent]);
 
-create(NumNodes, ServerPool, AgentOpts={{slow, SlowProb}, IsStealing}, t) when NumNodes > 1 ->
-    {NextServer, NewPool} = next_node(ServerPool),
+create(NumNodes, Modes={{slow, SlowProb}, IsStealing}) when NumNodes >= 1 ->
     Rand = rand:uniform(),
     Agent = if
                 Rand < SlowProb ->
-                    newagent(NextServer, {slow, IsStealing});
+                    newagent(node(), {slow, IsStealing});
                 true ->
-                    newagent(NextServer, {fullspeed, IsStealing})
+                    newagent(node(), {fullspeed, IsStealing})
             end,
-    queue:in(Agent, create(NumNodes-1, NewPool, t)).
-
-create(NumNodes, ServerPool, AgentOpts) ->
-    create(NumNodes, queue:from_list([node()|ServerPool]), AgentOpts,  t).
-
-create(NumNodes, AgentOpts) ->
-    create(NumNodes, [], AgentOpts).
-
-
-next_node(Nodes) ->
-    {{value, FirstNode}, RestNodes} = queue:out(Nodes),
-    {FirstNode, queue:in(FirstNode, RestNodes)}.
+    queue:in(Agent, create(NumNodes-1, Modes)).
 
 
 add(Nodes, 0) -> Nodes;

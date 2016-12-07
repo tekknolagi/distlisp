@@ -1,6 +1,7 @@
 -module(master).
--export([connect_worker_nodes/3, timed_pollhealth/1, parallel_map/4]).
+% -export([connect_worker_nodes/3, timed_pollhealth/1, parallel_map/4]).
 -export([idserver/0, freshid/1, test_rr/1, test_mrr/1, test_timed/1]).
+-export([delegator/1]).
 
 
 shuffle(Ls) ->
@@ -14,45 +15,15 @@ shuffle(Ls) ->
 %%%
 %%%  Need to implement schemes besides round robin
 
-aggregate_workers(Type) ->
-   register(node(), self()),
-   receive
-     {worker, Node, Pid, Mem, Cpu} ->
-       [{Node, Pid, Mem, Cpu}|aggregate_workers()];
-     {last, Node, Pid, Mem, Cpu} ->
-       [{Node, Pid, Mem, Cpu}|[]]
-   end.
-     
-connect_worker_nodes([], bymachine, _) -> {[], []} ;
-connect_worker_nodes([], flat, _) -> {[], queue:new()};
-connect_worker_nodes([H|T], flat, Alg) ->
-  Comp = net_kernel:connect_node(H),
-  if Comp ->
-    _InitPid = spawn(H, thread_pool, init_workers, [self(), Alg]),
-    receive {workers, Threads} ->
-      {_OldList, OldQueue} = connect_worker_nodes(T, flat, Alg),
-      RList = queue:to_list(queue:join(Threads, OldQueue)),
-      Queue = queue:from_list(shuffle(RList)),
-      {RList, Queue}
-    end;
-  true -> error(net_kernel_screwed_up)
-  end;
+%% aggregate_workers(Type) ->
+%%    register(node(), self()),
+%%    receive
+%%      {worker, Node, Pid, Mem, Cpu} ->
+%%        [{Node, Pid, Mem, Cpu}|aggregate_workers()];
+%%      {last, Node, Pid, Mem, Cpu} ->
+%%        [{Node, Pid, Mem, Cpu}|[]]
+%%    end.
 
-connect_worker_nodes([H|T], bymachine, Alg) ->
-  Comp = net_kernel:connect_node(H),
-  if Comp ->
-    _InitPid = spawn(H, thread_pool, init_machine, [self(), Alg]),
-    Prev = erlang:system_time(),
-    receive {Pid, Workers, Cpu, {Total, Alloc, _Worst}} ->
-      Recvd = erlang:system_time(),
-      WorkerList = queue:to_list(Workers),
-      {WList, Ms} = connect_worker_nodes(T, bymachine, Alg),
-      {WorkerList ++ WList, [{H, Pid, Workers, Cpu, Total-Alloc, Recvd-Prev}|Ms]}
-    end;
-  true ->  error(net_kernel_screwed_up)
-  end.
-
-  
 
 timed_pollhealth([]) -> [];
 timed_pollhealth([{Node, Pid, ThreadPool, SysCpu, SysMem, Time}|T]) ->
@@ -96,6 +67,32 @@ freshid(IdServer) ->
         {fresh_id, FreshId} -> FreshId
     end.
 
+
+delegator(Modes) ->
+    delegator(Modes, spawn(fun idserver/0), [], [], queue:new()).
+delegator(Modes={DistMode}, IdServer, Machines, FlatAgentsList, FlatAgentsQueue) ->
+    receive
+        {register, Pid, Name, Cpu, {Total, Alloc, _Worst}, AgentsQueue} ->
+            io:format("New machine joined: ~p~n", [Name]),
+            AgentsList = queue:to_list(AgentsQueue),
+            NewAgentsList = AgentsList ++ FlatAgentsList,
+            NewAgentsQueue = queue:join(AgentsQueue, FlatAgentsQueue),
+            lists:map(fun (Agent) -> Agent ! {other_agents, AgentsQueue} end,
+                      FlatAgentsList),
+            lists:map(fun (Agent) -> Agent ! {other_agents, FlatAgentsQueue} end,
+                      AgentsList),
+            Machine = {Name, Pid, AgentsQueue, Cpu, Total-Alloc},
+            delegator(Modes, IdServer, [Machine|Machines],
+                      NewAgentsList, NewAgentsQueue);
+        {delegate, WorkPackets, CallbackPid} ->
+            Results = parallel_map(IdServer, WorkPackets, FlatAgentsQueue,
+                                   DistMode),
+            CallbackPid ! {results, CallbackPid, Results},
+            delegator(Modes, IdServer, Machines,
+                      FlatAgentsList, FlatAgentsQueue)
+    end.
+
+
 parallel_map_timed(_IdServer, [], _Machines) -> [];
 parallel_map_timed(IdServer, [{Exp, Env}|T], Machines) ->
   {value, Fastest, _Rest} = time_machines(Machines),
@@ -105,7 +102,7 @@ parallel_map_timed(IdServer, [{Exp, Env}|T], Machines) ->
   Worker ! {delegate, FreshId, Exp, Env},
   queue:in(Worker, Workers),
   [FreshId | parallel_map_timed(IdServer, T, Machines)].
-   
+
 
 parallel_map_memrr(_IdServer, [], _Procs) -> [];
 parallel_map_memrr(IdServer, [{Exp, Env}|T], Machines) ->
@@ -120,10 +117,15 @@ parallel_map_memrr(IdServer, [{Exp, Env}|T], Machines) ->
 
 parallel_map_rr(_IdServer, [], _MachineQueue) -> [];
 parallel_map_rr(IdServer, [{Exp,Env}|T], ProcQueue) ->
-    {Proc, NewProcQueue} = thread_pool:next_node(ProcQueue),
+    {Proc, NewProcQueue} = next_node(ProcQueue),
     FreshId = freshid(IdServer),
     Proc ! {delegate, FreshId, Exp, Env},
     [FreshId|parallel_map_rr(IdServer, T, NewProcQueue)].
+
+
+next_node(Nodes) ->
+    {{value, FirstNode}, RestNodes} = queue:out(Nodes),
+    {FirstNode, queue:in(FirstNode, RestNodes)}.
 
 
 parallel_map(IdServer, WorkPackets, Processes, roundrobin) ->
@@ -139,9 +141,9 @@ parallel_map(IdServer, WorkPackets, Machines, timed) ->
    IdValPairs  = assemble(Avengers),
    lists:map(fun({_Id, Val}) -> Val end, IdValPairs).
 
-   
+
 assemble([]) -> [];
-assemble([Id|Rest]) -> 
+assemble([Id|Rest]) ->
                     receive
                         {result, Id, Val} ->
                                 [{Id, Val}|assemble(Rest)]
@@ -159,7 +161,7 @@ test_rr(Machines) ->
           {{list, [{sym, binplus}, {int, 7}, {int, 5}]}, StartingEnv}],
    io:format("Currently connected to: ~p~n", [nodes()]),
    master:parallel_map(IdServer, WP, Pids, roundrobin).
-  
+
 
 test_mrr(Machines) ->
   IdServer = spawn(fun idserver/0),
@@ -178,5 +180,3 @@ test_timed(Machines) ->
         {{list, [{sym, binplus}, {int, 5}, {int, 5}]}, StartingEnv},
         {{list, [{sym, binplus}, {int, 7}, {int, 5}]}, StartingEnv}],
   master:parallel_map(IdServer, WP, Ms, timed).
-
-
