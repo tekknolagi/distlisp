@@ -85,8 +85,9 @@ agent_loop(Worker, Info={Master, WorkQueue, OtherAgents, Options}) ->
                     agent_loop(Worker, {Master, NewWorkQueue, OtherAgents,
                                         Options})
             end;
-        {other_agents, AgentList} ->
-            agent_loop(Worker, {Master, WorkQueue, queue:from_list(AgentList),
-                               Options});
+        {other_agents, AgentsQueue} ->
+            agent_loop(Worker, {Master, WorkQueue, queue:join(AgentsQueue,
+                                                              OtherAgents),
+                                Options});
         _SomethingElse -> agent_loop(Worker, Info)
     end.

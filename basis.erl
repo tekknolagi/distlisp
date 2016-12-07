@@ -103,17 +103,16 @@ pmap_proc([Fn, {list, Ls}], Env) ->
 
 
 dmap_proc([Fn, {list, Ls}], Env) ->
-    % Map = fun lists:map/2,
-    IdServer = eval:lookup('__idserver', Env),
-    AgentStore = eval:lookup('__agents', Env),
-    {sym, DistMode} = eval:lookup('__distmode', Env),
-    FnApplications = lists:map(fun (Exp) ->
-                                       {list, [Fn, Exp]}
-                               end, Ls),
+    FnApplications = lists:map(fun (Exp) -> {list, [Fn, Exp]} end, Ls),
     Envs = lists:duplicate(length(Ls), Env),
     WorkPackets = eval:tuplezip(FnApplications, Envs),
-    Results = master:parallel_map(IdServer, WorkPackets, AgentStore, DistMode),
-    {{list, Results}, Env}.
+    {sym, DelegatorAtom} = eval:lookup('__delegator', Env),
+    Delegator = list_to_pid(atom_to_list(DelegatorAtom)),
+    Self = self(),
+    Delegator ! {delegate, WorkPackets, Self},
+    receive
+        {results, Self, Results} -> {{list, Results}, Env}
+    end.
 
 
 exp_proc([{int, AV}, {int, BV}], Env) -> {{int, round(math:pow(AV, BV))}, Env}.
