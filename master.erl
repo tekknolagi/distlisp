@@ -14,6 +14,15 @@ shuffle(Ls) ->
 %%%
 %%%  Need to implement schemes besides round robin
 
+aggregate_workers(Type) ->
+   register(node(), self()),
+   receive
+     {worker, Node, Pid, Mem, Cpu} ->
+       [{Node, Pid, Mem, Cpu}|aggregate_workers()];
+     {last, Node, Pid, Mem, Cpu} ->
+       [{Node, Pid, Mem, Cpu}|[]]
+   end.
+     
 connect_worker_nodes([], bymachine, _) -> {[], []} ;
 connect_worker_nodes([], flat, _) -> {[], queue:new()};
 connect_worker_nodes([H|T], flat, Alg) ->

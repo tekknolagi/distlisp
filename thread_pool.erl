@@ -1,7 +1,35 @@
 -module(thread_pool).
--export([create/1, create/2, next_node/1, add/1, add/2]).
--export([waitforwork/0, init_machine/2, init_workers/2,
-         loop/1, calculate1/0, calculate2/0, reap/3]).
+-export([create/2, next_node/1, add/1, add/2]).
+-export([waitforwork/0, loop/1, calculate1/0, calculate2/0, reap/3]).
+-export([selfstart/4]).
+
+
+selfstart(MasterNode, CalcAlg, AgentOpts, Last, Type) ->
+   Comp =  net_kernel:connect_node(MasterNode),
+   if Comp ->
+      application:start(sasl),
+      application:start(os_mon),
+      NumProcs = case CalcAlg of 
+         1 -> calculate1();
+         2 -> calculate2()
+      end,
+
+      ThreadPool = create(NumProcs, AgentOpts),
+      
+      lists:map(fun(Agent) -> Agent ! {master, {MasterNode, MasterNode}} end,
+           queue:to_list(ThreadPool)),
+
+     case Type of 
+      bymachine ->
+        {MasterNode, MasterNode} ! {Last, node(), self(),
+           erlang:system_info(logical_processors_available),
+           memsup:get_memory_data()};
+      flat ->
+        {MasterNode, MasterNode} ! {Last, node(), self(), ThreadPool}
+     end;
+     true ->
+        error
+     end.
 
 
 newagent(Server, Modes) ->
@@ -11,22 +39,29 @@ newagent(Server) ->
     newagent(Server, {fullspeed, stealing}).
 
 
-create(0, _ServerPool, t) -> queue:from_list([]);
+create(0, _ServerPool, AgentOpts, t) -> queue:from_list([]);
 
-create(1, ServerPool, t) -> {NextServer, _NewPool} = next_node(ServerPool),
-                            Agent = newagent(NextServer, {slow, stealing}),
-                            queue:from_list([Agent]);
+%create(1, ServerPool, AgentOpts, t) ->
+%    {NextServer, _NewPool} = next_node(ServerPool),
+%    Agent = newagent(NextServer, AgentOpts),
+%    queue:from_list([Agent]);
 
-create(NumNodes, ServerPool, t) when NumNodes > 1 ->
+create(NumNodes, ServerPool, AgentOpts={{slow, SlowProb}, IsStealing}, t) when NumNodes > 1 ->
     {NextServer, NewPool} = next_node(ServerPool),
-    Agent = newagent(NextServer),
+    Rand = rand:uniform(),
+    Agent = if
+                Rand < SlowProb ->
+                    newagent(NextServer, {slow, IsStealing});
+                true ->
+                    newagent(NextServer, {fullspeed, IsStealing})
+            end,
     queue:in(Agent, create(NumNodes-1, NewPool, t)).
 
-create(NumNodes, ServerPool) ->
-    create(NumNodes, queue:from_list([node()|ServerPool]), t).
+create(NumNodes, ServerPool, AgentOpts) ->
+    create(NumNodes, queue:from_list([node()|ServerPool]), AgentOpts,  t).
 
-create(NumNodes) ->
-    create(NumNodes, []).
+create(NumNodes, AgentOpts) ->
+    create(NumNodes, [], AgentOpts).
 
 
 next_node(Nodes) ->
@@ -70,29 +105,29 @@ key_delete(_, _) -> error.
 reap(ThreadPool, Pairs, DeadPids) ->
    {list_delete(ThreadPool, DeadPids), key_delete(Pairs, DeadPids)}.
 
-init_workers (Master, CalcAlg) ->
-  application:start(sasl),
-  application:start(os_mon),
-  ThreadPool = case CalcAlg of
-    1 -> create(calculate1());
-    2 -> create(calculate2())
-  end,
-  lists:map(fun(Agent) -> Agent ! {master, Master} end,
-            queue:to_list(ThreadPool)),
-  Master ! {workers, ThreadPool}.
-
-init_machine (Master, CalcAlg) ->
-  application:start(sasl),
-  application:start(os_mon),
-  ThreadPool = case CalcAlg of
-    1 -> create(calculate1());
-    2 -> create(calculate2())
-  end,
-  lists:map(fun(Agent) -> Agent ! {master, Master} end,
-            queue:to_list(ThreadPool)),
-  Master ! {self(), ThreadPool, erlang:system_info(logical_processors_available),
-            memsup:get_memory_data()},
-  loop(Master).
+%% init_workers (Master, CalcAlg) ->
+%%   application:start(sasl),
+%%   application:start(os_mon),
+%%   ThreadPool = case CalcAlg of
+%%     1 -> create(calculate1());
+%%     2 -> create(calculate2())
+%%   end,
+%%   lists:map(fun(Agent) -> Agent ! {master, Master} end,
+%%             queue:to_list(ThreadPool)),
+%%   Master ! {workers, ThreadPool}.
+%% 
+%% init_machine (Master, CalcAlg) ->
+%%   application:start(sasl),
+%%   application:start(os_mon),
+%%   ThreadPool = case CalcAlg of
+%%     1 -> create(calculate1());
+%%     2 -> create(calculate2())
+%%   end,
+%%   lists:map(fun(Agent) -> Agent ! {master, Master} end,
+%%             queue:to_list(ThreadPool)),
+%%   Master ! {self(), ThreadPool, erlang:system_info(logical_processors_available),
+%%             memsup:get_memory_data()},
+%%   loop(Master).
 
 loop(Master) ->
   receive
