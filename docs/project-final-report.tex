@@ -23,10 +23,16 @@
 Many of today's programs are written sequentially, and do not take advantage of
 the computer's available resources. This is in a large part due to the
 difficulty of using any given available threading or parallelization API.
+Moreover, these programs often fail to take advantage of the network
+to distribute work not just among processes to take advantage of the
+scheduler, but use available computing power over the network.
 
 We solve this problem by automatically parallelizing or distributing
 computation across cores or even across a datacenter, then analyze the
-performance of our distribution algorithms across several modes.
+performance of our distribution algorithms across several modes. We
+created a toy programming language based on lisp and built the underlying
+parser, basis, and evaluator in Erlang, which also handles our network
+protocols and distribution algorithms.
 
 \section{Design}
 
@@ -141,5 +147,95 @@ A Master node is started, and runs on node \verb|M|. Independently, anywhere
 from 0 to N>0 Machines are started up on the same network, with knowledge of
 the Master. In this case, we use Erlang nodenames, such as the atom
 \verb|master@some.ip.address.here|, to identify the Master.
+
+\section{Distribution Methods}
+
+The goal of this project was to allow for a client with basic coding abilities
+to vastly improve the performance of their program which may take up a significant
+amount of memory or processing power by distributing it in a more effective way,
+either  by using Erlang's ability to spawn threads and collate responses to take
+advantage of the local scheduler, or by distributing the work across multiple machines
+over network.
+
+\subsection{Local Parallelization}
+
+The function 'pmap' in dlisp takes in a function, which can be anonymous, and 
+a list, as arguments. The parser decomposes these inputs into a list of WorkPackets
+consisting an expression and the environment in which the expression is to be carried out.
+The expression consists of an operation and a member of the list on which it is to be
+evaluated. For each member of the list, an Erlang process is spawned in which our eval
+module is called on the WorkPacket and then the evaluated result is sent back to the Master
+Erlang process. An assemble function collates all of the results and returns the mapped list.
+
+The advantage of this is that it allows for more optimal scheduling of processes that are not
+dependent on one another. Because this is not a Reduce operation, there's no data dependency
+to resolve, and evaluating sequentially wastes scheduling time for no discernible benefit.
+
+\subsection{Distributed Parallelization}
+
+The function 'dmap' in dlisp works semantically just like pmap. However, under the hood, 
+a significant amount is different. There are three possible methods of distributed map:
+Round Robin, Low Latency, and By Memory. Each of these is a different load balancing technique
+that aims to distribute work in the most efficient way possible.
+
+\subsubsection{Round Robin}
+
+In the round robin scheme, all machines that are to contain Worker processes are initialized
+with a number of processes calculate based on the amount of memory and/or number cores on the
+respective machines. Each machine sends their list of Worker processes identifiers to master, 
+and the Master concatenates the lists into a queue and randomizes the order of the workers.
+When dmap is  invoked, The 'dmap' call is decomposed in the same way as 'pmap' into WorkPackets
+for each item in the list. In the case of dmap, however, the WorkPacket is sent to processes
+selected from the aforementioned queue. A process is popped off the queue, sent a WorkPacket,
+and requeued at the back, in a round-robin scheme. After all of the work is sent, a list of IDs
+for each individual job is returned so that when Workers send results back, they can be collated
+and assembled into a mapped list by master who sits in receiving mode until all the packets have
+been recovered. 
+
+
+\subsection{Low Latency}
+
+In the low latency scheme, initialization occurs by machine. When machines register with master,
+It is appended to a list of Machine representations, each element containing the machine Pid, 
+a queue of Processes local to the Machine. When 'dmap' is called, for each iteration through the
+list given as an argument, a message is sent to all of the worker Machines, and the first one to
+respond is given the WorkPacket. The process is then repeated until work is entirely allocated.
+The goal of this algorithm is to account for disparities in latency between machines. Although this
+was not an issue we experienced, it is plausible that a large organization with multiple data centers
+could see this issue if the pool of machines contained nodes with a significant enough distance from
+each other or nodes that are simply slower. Collation works the same as in Round Robin, where
+the Master waits for each packet to return before in order returning the collated results.
+
+\subsection{By Memory}
+
+The By Memory scheme is similar to low latency, except in this case available memory is prioritized.
+Much like in the low latency scheme, initialization occurs by machine, such that each machine, when it
+connects, sends its worker queue and statistics and is represented in a list of Machines by master having its
+own distinct WorkerQueue. For each element in the list, the corresponding WorkPacket is sent to the
+machine that presents as having the most available memory. Machines are polled through each iteration of this
+process. By Memory was the scheme we tested the least, because it was difficult to contrive scenarios of
+heterogeneity between machines in terms of memory usage in the scope of the time we were given.
+
+\subsection{Work Stealing}
+
+A major component in how we distributed work is through work stealing. The principle of work stealing is that
+when certain processes are busy, others can take on more work. This is a way to augment the load balancing above
+in having a failsafe in case a process or processes stall on work. In order to accomplish this, when we create worker
+processes on a node, these are actually pairs of Workers and Agents, which were briefly defined above. The motivation is
+that the worker simply waits for work, performs the work when the work order is received and returns it, then repeats ad
+infinitum. The Agent, however, is the point-of-contact for the worker and anyone who wishes to send it work. It is called
+an agent because it behaves like an agent for an actress, sports player, or celebrity: the worker does the work, and the agent
+manages the worker and gives it work from outside sources. The list of processes inside of Master is a list of agents, in reality.
+The Master sends the Agent work, who passes it along to the worker or builds up a queue of jobs for the worker to do.
+The Agent also feverishly negotiates, sending messages to all of the other agents asking to steal work from their queue
+when the worker is idle. This setup allows for any inefficiencies in the system to be mitigated for. If in the low latency scheme
+there is one clear favorite machine, its scheduler may be bogged down with potentially high-powered jobs. While it is processing
+work, an Agent on another machine can steal from the queues being built up by the agents on the lowest latency machine. To the Master,
+this is irrelevant, but it allows for work to get done as fast as possible with little central micromanagement.
+
+\section{Results}
+
+\section{Conclusion}
+
 
 \end{document}
