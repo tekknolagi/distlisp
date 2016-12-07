@@ -53,12 +53,24 @@ timed_pollhealth([{Node, Pid, ThreadPool, SysCpu, SysMem, Time}|T]) ->
      Elapsed = erlang:system_time() - PrevTime,
      [{Node, Pid, ThreadPool, SysCpu, Total - Alloc, 0.875*Time + 0.125*Elapsed}|
       timed_pollhealth(T)]
-   after 100 ->
+   after 1000 ->
      Elapsed = erlang:system_time(),
      [{Node, Pid, ThreadPool, SysCpu, SysMem, 0.875*Time + 0.125*Elapsed}|
       timed_pollhealth(T)]
    end;
 timed_pollhealth(_) -> error.
+
+send_request([]) -> sent;
+send_request([{_Node, Pid, _ThreadPool, _Cpu, _Mem, _Time}|T]) ->
+    Pid ! system_check,
+    send_request(T).
+
+time_machines([{_Node, _Pid, _ThreadPool, _Cpu, _Mem, _Time}=H|T]) ->
+    send_request([H|T]),
+    receive {Fastest, _Cpu, {_Total, _Alloc, _Worst}} ->
+        lists:keytake(Fastest, 2, [H|T])
+    end.
+
 
 idserver() ->
     idserver(0).
@@ -77,14 +89,13 @@ freshid(IdServer) ->
 
 parallel_map_timed(_IdServer, [], _Machines) -> [];
 parallel_map_timed(IdServer, [{Exp, Env}|T], Machines) ->
-  %Ms = timed_pollhealth(Machines),
-  [{_Node, _Pid, Workers, _Cpu, _Mem, _Time}|_T] = lists:keysort(6, Machines),
+  {value, Fastest, _Rest} = time_machines(Machines),
+  {Node, _Pid, Workers, _Cpu, _Mem, _Time} = Fastest,
   FreshId = freshid(IdServer),
   Worker = queue:get(Workers),
   Worker ! {delegate, FreshId, Exp, Env},
   queue:in(Worker, Workers),
-  Ms = timed_pollhealth(Machines),
-  [FreshId | parallel_map_timed(IdServer, T, Ms)].
+  [FreshId | parallel_map_timed(IdServer, T, Machines)].
    
 
 parallel_map_memrr(_IdServer, [], _Procs) -> [];
