@@ -69,11 +69,11 @@ freshid(IdServer) ->
 
 
 delegator(Modes) ->
+    register(master, self()),
     delegator(Modes, spawn(fun idserver/0), [], [], queue:new()).
 delegator(Modes={DistMode}, IdServer, Machines, FlatAgentsList, FlatAgentsQueue) ->
     receive
         {register, Pid, Name, Cpu, {Total, Alloc, _Worst}, AgentsQueue} ->
-            io:format("New machine joined: ~p~n", [Name]),
             AgentsList = queue:to_list(AgentsQueue),
             NewAgentsList = AgentsList ++ FlatAgentsList,
             NewAgentsQueue = queue:join(AgentsQueue, FlatAgentsQueue),
@@ -81,15 +81,20 @@ delegator(Modes={DistMode}, IdServer, Machines, FlatAgentsList, FlatAgentsQueue)
                       FlatAgentsList),
             lists:map(fun (Agent) -> Agent ! {other_agents, FlatAgentsQueue} end,
                       AgentsList),
-            Machine = {Name, Pid, AgentsQueue, Cpu, Total-Alloc},
+            Machine = {Name, Pid, AgentsQueue, Cpu, Total-Alloc, 0},
             delegator(Modes, IdServer, [Machine|Machines],
                       NewAgentsList, NewAgentsQueue);
         {delegate, WorkPackets, CallbackPid} ->
-            Results = parallel_map(IdServer, WorkPackets, FlatAgentsQueue,
-                                   DistMode),
+            Receivers = case DistMode of
+                            roundrobin -> FlatAgentsList;
+                            timed -> Machines;
+                            memroundrobin -> Machines
+                        end,
+            Results = parallel_map(IdServer, WorkPackets, Receivers, DistMode),
             CallbackPid ! {results, CallbackPid, Results},
             delegator(Modes, IdServer, Machines,
-                      FlatAgentsList, FlatAgentsQueue)
+                      FlatAgentsList, FlatAgentsQueue);
+        Other -> io:format("Received malformed message ~p~n", [Other])
     end.
 
 
@@ -129,17 +134,17 @@ next_node(Nodes) ->
 
 
 parallel_map(IdServer, WorkPackets, Processes, roundrobin) ->
-   Avengers = parallel_map_rr(IdServer, WorkPackets, Processes),
-   IdValPairs = assemble(Avengers),
+    Avengers = parallel_map_rr(IdServer, WorkPackets, queue:from_list(Processes)),
+    IdValPairs = assemble(Avengers),
     lists:map(fun({_Id, Val}) -> Val end, IdValPairs);
 parallel_map(IdServer, WorkPackets, Machines, memroundrobin) ->
-   Avengers = parallel_map_memrr(IdServer, WorkPackets, Machines),
-   IdValPairs =  assemble(Avengers),
-   lists:map(fun({_Id, Val}) -> Val end, IdValPairs);
+    Avengers = parallel_map_memrr(IdServer, WorkPackets, Machines),
+    IdValPairs =  assemble(Avengers),
+    lists:map(fun({_Id, Val}) -> Val end, IdValPairs);
 parallel_map(IdServer, WorkPackets, Machines, timed) ->
-   Avengers = parallel_map_timed(IdServer, WorkPackets, Machines),
-   IdValPairs  = assemble(Avengers),
-   lists:map(fun({_Id, Val}) -> Val end, IdValPairs).
+    Avengers = parallel_map_timed(IdServer, WorkPackets, Machines),
+    IdValPairs  = assemble(Avengers),
+    lists:map(fun({_Id, Val}) -> Val end, IdValPairs).
 
 
 assemble([]) -> [];

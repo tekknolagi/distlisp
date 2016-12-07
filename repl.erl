@@ -9,7 +9,6 @@ main() ->
     reader:repl(1, basis:basis()).
 main([DistMode]) when is_atom(DistMode) ->
     erlang:set_cookie(node(), dlisp),
-    register(master, self()),
     Delegator = spawn(master, delegator, [{DistMode}]),
     DelegatorAtom = {sym, list_to_atom(pid_to_list(Delegator))},
     %{FlatAgentList, AgentStore} =

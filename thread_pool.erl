@@ -6,11 +6,12 @@
 
 selfstart(MasterNode, CalcAlg, AgentOpts) ->
     Comp = net_kernel:connect_node(MasterNode),
+    MasterPid = {master, MasterNode},
     case Comp of
         true ->
            application:start(sasl),
            application:start(os_mon),
-           NumProcs = case CalcAlg of 
+           NumProcs = case CalcAlg of
                           1 -> calculate1();
                           2 -> calculate2()
                       end,
@@ -19,15 +20,16 @@ selfstart(MasterNode, CalcAlg, AgentOpts) ->
            AgentsList = queue:to_list(AgentsQueue),
 
            lists:map(fun(Agent) ->
-                             Agent ! {master, MasterNode},
-                             Agent ! {other_agents, AgentsQueue} 
+                             Agent ! {master, MasterPid},
+                             Agent ! {other_agents, AgentsQueue}
                      end, AgentsList),
 
-           {master, MasterNode} ! {register, self(), node(),
-                                   erlang:system_info(logical_processors_available),
-                                   memsup:get_memory_data(), AgentsQueue};
+           MasterPid ! {register, self(), node(),
+                        erlang:system_info(logical_processors_available),
+                        memsup:get_memory_data(), AgentsQueue};
         false -> error({selfstart, masterconnect_failed})
-    end.
+    end,
+    loop(MasterPid).
 
 
 newagent(Server, Modes) ->
