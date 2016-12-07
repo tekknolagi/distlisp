@@ -10,4 +10,9 @@ rel/example_project
 .rebar
 parser.erl
 scanner.erl
-generated_basis.erl
+
+# LaTeX artifacts
+*.aux
+*.log
+*.pdf
+

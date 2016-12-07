@@ -1,0 +1,145 @@
+\documentclass[letterpaper,twocolumn,10pt]{article}
+\usepackage{usenix,epsfig,endnotes,enumerate,graphicx,multicol}
+\begin{document}
+
+%don't want date printed
+\date{}
+
+%make title bold and 14 pt font (Latex default is non-bold, 16 pt)
+\title{\Large \bf DLisp: Automatically distributed computation}
+
+\newcommand{\tuftsauthor}[1]{{\rm #1}\\
+  Tufts University}
+
+\author{
+  \tuftsauthor{Maxwell Bernstein}
+  \and
+  \tuftsauthor{Matthew Yaspan}
+}
+
+\maketitle
+
+\subsection*{Abstract}
+Many of today's programs are written sequentially, and do not take advantage of
+the computer's available resources. This is in a large part due to the
+difficulty of using any given available threading or parallelization API.
+
+We solve this problem by automatically parallelizing or distributing
+computation across cores or even across a datacenter, then analyze the
+performance of our distribution algorithms across several modes.
+
+\section{Design}
+
+\subsection{Language}
+
+We began with a Lisp-like language with support for most forms: \verb|fixnum|,
+\verb|boolean|, \verb|symbol|, \verb|lambda|, \verb|funcall|, \verb|define|,
+\verb|val|, \verb|quote|, \verb|if|, \verb|let|, \verb|let*|, \verb|eval|,
+\verb|apply|, built-in functions, and closures. Then we decided that users
+would be less comfortable with a Lisp than a programming language with a syntax
+that mirrors existing programming languages like SML and OCaml, and changed the
+syntax. Mergesort, for example, begin as:
+
+\begin{verbatim}
+(define mergesort (xs)
+  (if (or (null? xs) (null? (cdr xs)))
+    xs
+    (let* ((size    (length xs))
+           (half    (/ size 2))
+           (fsthalf (take half xs))
+           (sndhalf (drop half xs)))
+      (merge (mergesort fsthalf)
+             (mergesort sndhalf)))))
+\end{verbatim}
+
+\newpage
+
+and, after the syntax transformation, ended as:
+
+\begin{verbatim}
+fun mergesort(xs) =
+  if null?(xs) or null?(cdr(xs))
+  then xs
+  else let* val size = length(xs),
+            val half = size/2,
+            val fsthalf = take(half, xs),
+            val sndhalf = drop(half, xs)
+       in merge(mergesort(fsthalf), mergesort(sndhalf))
+       end;;
+\end{verbatim}
+
+Both programs map to the same abstract syntax tree, which means that we even
+allow mixing and matching of styles in the same program, as in:
+
+\begin{verbatim}
+fun mergesort(xs) =
+  if [or [null? xs] [null? [cdr xs]]]
+  then xs
+  else let* val size = length(xs),
+            val half = size/2,
+            val fsthalf = take(half, xs),
+            val sndhalf = drop(half, xs)
+       in [merge mergesort(fsthalf) mergesort(sndhalf)]
+       end;;
+\end{verbatim}
+
+One language property that \textit{did not} change in the transition was
+mutation; DLisp forces variable immutability. In forms that introduce new
+environments, such as \verb|let| and \verb|lambda|, shadowing is allowed -- but
+never mutation. This, as it turns out, is key when attempting to parallelize
+computation.
+
+For this reason, \verb|map|, \verb|pmap| (parallel map), and \verb|dmap|
+(distributed map) are all built-in special forms.
+
+\newpage
+
+\subsection{Network}
+
+We use several terms across the span of this writeup:
+
+\begin{itemize}
+    \item \textit{Master} --- Main controller computer from which the program
+        is run and distributed. Communicates with several Machines and Workers.
+    \item \textit{Machine} --- Logical or physical computer, which contains
+        many Agents and Workers.
+    \item \textit{WorkPacket} --- A serializable tuple of the form \verb|{Exp|
+        $x$ \verb|Env}| that is sent to Workers.
+    \item \textit{Worker} --- Process whose sole purpose is to receive
+        WorkPackets, evaluate them, and send the results back to the Master.
+    \item \textit{SlowWorker} --- A Worker that has been artificially slowed
+        down by a constant factor.
+    \item \textit{Agent} --- Process whose sole purpose is to manage a work
+        queue.
+    \item \textit{StealingAgent} --- Agent that occasionally steals from other
+        Agents when its worker is moving quickly.
+    \item \textit{RoundRobinMode} --- Distribution mode that uses a circular
+        queue to hand out work to Workers in order.
+    \item \textit{ByMachineMode} --- Distribution mode that uses per-Machine
+        statistics to determine which Worker should receive a given WorkPacket.
+        Currently, this has two sub-modes:
+        \begin{itemize}
+            \item \textit{Timed} --- Hand out work to whoever can respond the
+                fastest to a HealthCheck.
+            \item \textit{Memory} --- Hand out work to whoever has the most
+                computational power (currently measured by memory pressure)
+                currently available.
+        \end{itemize}
+\end{itemize}
+
+We use normal (non-stealing) Agents to begin with, then proceed to demonstrate
+the utility and speed gains by using StealingAgents. Additionally, we introduce
+some SlowWorkers into the Worker pool to demonstrate that work stealing is an
+effective means of combating heterogeneous computational power.
+
+Additionally, we demonstrate the results of different distribution modes
+(enumerated above) and their affects on end-to-end computation speed.
+
+\subsection{Startup Procedure}
+
+A Master node is started, and runs on node \verb|M|. Independently, anywhere
+from 0 to N>0 Machines are started up on the same network, with knowledge of
+the Master. In this case, we use Erlang nodenames, such as the atom
+\verb|master@some.ip.address.here|, to identify the Master.
+
+\end{document}
