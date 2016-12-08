@@ -153,7 +153,9 @@ evalexp({list, [?LETSTAR,
                 {list, [{list, [{sym, Name}, Exp]}|T]},
                 Body]}, Env) ->
     {Val, _} = evalexp(Exp, Env),
-    evalexp({list, [?LETSTAR, {list, T}, Body]}, bind(Name, Val, Env));
+    {BodyVal, _} = evalexp({list, [?LETSTAR, {list, T}, Body]},
+                           bind(Name, Val, Env)),
+    {BodyVal, Env};
 
 evalexp({list, [?LET, {list, Bindings}, Body]}, Env) ->
     BoundVars = lists:map(fun ({list, [{sym, Name}, Exp]}) ->
@@ -161,7 +163,8 @@ evalexp({list, [?LET, {list, Bindings}, Body]}, Env) ->
                                   {Name, Val}
                           end, Bindings),
     NewEnv = extend(BoundVars, Env),
-    evalexp(Body, NewEnv);
+    {Val, _} = evalexp(Body, NewEnv),
+    {Val, Env};
 
 evalexp({list, [?DEFINE, {sym, Name}, Formals, Body]}, Env) ->
     {Closure, _} = evalexp({list, [?LAMBDA, Formals, Body]}, Env),
