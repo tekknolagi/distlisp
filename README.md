@@ -14,3 +14,7 @@ Worker(s): `./replworker.sh masterIP percentSlow stealing|solitary`
 
 Then you can enter expressions like `time(dmap(fac, range(0, 1000)));;` in the
 Master's REPL.
+
+## Authors
+
+Maxwell Bernstein and Matthew Yaspan
