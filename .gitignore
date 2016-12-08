@@ -14,5 +14,3 @@ scanner.erl
 # LaTeX artifacts
 *.aux
 *.log
-*.pdf
-
