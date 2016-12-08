@@ -334,15 +334,15 @@ designed to handle systems with more heterogeneous network setups.
 
 \section{Conclusion}
 
-The regression results shown above give a summary of the partial effects of
-each of the variables we incorporated based on the table shown previously. The
-intercept value (12476 ms) refers to the value of the reference observation, in
-which the type of parallel map used was Low Latency, there were no slow
-workers, and no work stealing. Outside of the intercept, none of the variables
-were statistically significant, which is almost certain to the lack of
-observations and high number of variables and interactions by comparison. With
-more time, a more robust dataset could be easily compiled and results much more
-definitive.
+The regression results (see \verb|regression_results.txt|) give a summary of
+the partial effects of each of the variables we incorporated based on the table
+shown previously. The intercept value (12476 ms) refers to the value of the
+reference observation, in which the type of parallel map used was Low Latency,
+there were no slow workers, and no work stealing. Outside of the intercept,
+none of the variables were statistically significant, which is almost certain
+to the lack of observations and high number of variables and interactions by
+comparison. With more time, a more robust dataset could be easily compiled and
+results much more definitive.
 
 Generally speaking, RoundRobin clearly had an advantage over Low Latency. All
 else equal, it performed over 4 seconds faster, nearly halving the amount of
