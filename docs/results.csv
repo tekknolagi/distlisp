@@ -1,4 +1,4 @@
-﻿pmap Type,worker stealing?,Pct Slow Workers,Avg,Std
+pmap Type,worker stealing?,Pct Slow Workers,Avg,Std
 Round Robin,N,1,5810,68
 Round Robin,Y,0,6153,512
 Round Robin,Y,0.5,6895,312
