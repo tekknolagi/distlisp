@@ -64,10 +64,10 @@ agent_loop(Worker, Info={Master, WorkQueue, OtherAgents, Options}) ->
             case queue:out(WorkQueue) of
                 {empty, WorkQueue} ->
                     case Options of
-                        {stealing} ->
+                        {solitary} ->
                             Requester ! nothing_yet,
                             agent_loop(Worker, Info);
-                        {solitary} ->
+                        {stealing} ->
                             case queue:out(OtherAgents) of
                                 {empty, OtherAgents} ->
                                     Requester ! nothing_yet,
